@@ -95,10 +95,4 @@ GROQ_MODEL=llama-3.3-70b-versatile
 
 ---
 
-## License
-
-MIT
-
----
-
 *Built for the Qdrant Vector Search Hackathon* 🚀
