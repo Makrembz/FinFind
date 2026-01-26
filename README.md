@@ -95,4 +95,4 @@ GROQ_MODEL=llama-3.3-70b-versatile
 
 ---
 
-*Built for the Qdrant Vector Search Hackathon* 🚀
+*Built for the Vectors In Orbit Hackathon *
