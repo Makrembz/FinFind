@@ -85,7 +85,6 @@ temp/
 *.bin
 *.h5
 *.onnx
-models/
 data/
 *.parquet
 *.csv
