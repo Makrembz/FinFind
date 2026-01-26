@@ -1,0 +1,257 @@
+# FinFind Scheduled Tasks
+# Runs maintenance and monitoring tasks on a schedule
+
+name: Scheduled Tasks
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - health-check
+          - dependency-update
+          - backup
+          - cleanup
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+
+jobs:
+  # ==========================================================================
+  # Health Check
+  # ==========================================================================
+  health-check:
+    name: Production Health Check
+    runs-on: ubuntu-latest
+    if: github.event.inputs.task == 'all' || github.event.inputs.task == 'health-check' || github.event_name == 'schedule'
+
+    steps:
+      - name: Check backend health
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://finfind-backend.fly.dev/health)
+          if [ "$response" != "200" ]; then
+            echo "Backend health check failed with status: $response"
+            exit 1
+          fi
+          echo "Backend is healthy"
+
+      - name: Check frontend health
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://finfind-frontend.fly.dev/)
+          if [ "$response" != "200" ]; then
+            echo "Frontend health check failed with status: $response"
+            exit 1
+          fi
+          echo "Frontend is healthy"
+
+      - name: Check API response time
+        run: |
+          time=$(curl -s -o /dev/null -w "%{time_total}" https://finfind-backend.fly.dev/health)
+          echo "API response time: ${time}s"
+          if (( $(echo "$time > 5" | bc -l) )); then
+            echo "Warning: API response time is slow"
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: '🚨 Production health check failed!'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ==========================================================================
+  # Dependency Updates
+  # ==========================================================================
+  dependency-update:
+    name: Check Dependency Updates
+    runs-on: ubuntu-latest
+    if: github.event.inputs.task == 'all' || github.event.inputs.task == 'dependency-update' || github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Check Python dependencies
+        run: |
+          pip install pip-audit
+          cd backend
+          pip-audit -r requirements.txt --format json > ../pip-audit-results.json || true
+        continue-on-error: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Check npm dependencies
+        run: |
+          cd Frontend
+          npm audit --json > ../npm-audit-results.json || true
+        continue-on-error: true
+
+      - name: Upload audit results
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-audit-results
+          path: |
+            pip-audit-results.json
+            npm-audit-results.json
+
+      - name: Create issue for vulnerabilities
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let hasVulnerabilities = false;
+            let issueBody = '## Dependency Vulnerability Report\n\n';
+            
+            // Check Python audit results
+            try {
+              const pipAudit = JSON.parse(fs.readFileSync('pip-audit-results.json', 'utf8'));
+              if (pipAudit.length > 0) {
+                hasVulnerabilities = true;
+                issueBody += '### Python Dependencies\n';
+                pipAudit.forEach(v => {
+                  issueBody += `- **${v.name}** (${v.version}): ${v.vulns.map(x => x.id).join(', ')}\n`;
+                });
+                issueBody += '\n';
+              }
+            } catch (e) {
+              console.log('No Python vulnerabilities found');
+            }
+            
+            // Check npm audit results
+            try {
+              const npmAudit = JSON.parse(fs.readFileSync('npm-audit-results.json', 'utf8'));
+              if (npmAudit.metadata && npmAudit.metadata.vulnerabilities.total > 0) {
+                hasVulnerabilities = true;
+                issueBody += '### Node.js Dependencies\n';
+                issueBody += `- High: ${npmAudit.metadata.vulnerabilities.high}\n`;
+                issueBody += `- Critical: ${npmAudit.metadata.vulnerabilities.critical}\n`;
+              }
+            } catch (e) {
+              console.log('No npm vulnerabilities found');
+            }
+            
+            if (hasVulnerabilities) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🔒 Dependency Vulnerabilities Detected',
+                body: issueBody,
+                labels: ['security', 'dependencies']
+              });
+            }
+
+  # ==========================================================================
+  # Database Backup (if applicable)
+  # ==========================================================================
+  backup:
+    name: Backup Data
+    runs-on: ubuntu-latest
+    if: github.event.inputs.task == 'backup'
+
+    steps:
+      - name: Backup Qdrant collections
+        run: |
+          echo "Creating Qdrant backup..."
+          # Add Qdrant backup commands here
+          # curl -X POST "https://your-cluster.qdrant.io/collections/finfind_products/snapshots" \
+          #   -H "api-key: ${{ secrets.QDRANT_API_KEY }}"
+
+      - name: Upload backup
+        run: |
+          echo "Uploading backup to storage..."
+          # Add backup upload commands here
+
+  # ==========================================================================
+  # Cleanup
+  # ==========================================================================
+  cleanup:
+    name: Cleanup Old Resources
+    runs-on: ubuntu-latest
+    if: github.event.inputs.task == 'all' || github.event.inputs.task == 'cleanup' || github.event_name == 'schedule'
+
+    steps:
+      - name: Cleanup old Docker images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: 'backend'
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
+
+      - name: Cleanup old workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          retain_days: 30
+          keep_minimum_runs: 10
+
+  # ==========================================================================
+  # Weekly Report
+  # ==========================================================================
+  weekly-report:
+    name: Generate Weekly Report
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && github.event.schedule == '0 2 * * 0'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate report
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            
+            // Get workflow runs
+            const runs = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              created: `>=${oneWeekAgo.toISOString()}`
+            });
+            
+            const successful = runs.data.workflow_runs.filter(r => r.conclusion === 'success').length;
+            const failed = runs.data.workflow_runs.filter(r => r.conclusion === 'failure').length;
+            
+            // Get issues
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              since: oneWeekAgo.toISOString(),
+              state: 'all'
+            });
+            
+            const report = `
+            # Weekly FinFind Report
+            
+            ## CI/CD Summary
+            - Successful runs: ${successful}
+            - Failed runs: ${failed}
+            - Success rate: ${((successful / (successful + failed)) * 100).toFixed(1)}%
+            
+            ## Issues
+            - New issues: ${issues.data.filter(i => new Date(i.created_at) > oneWeekAgo).length}
+            - Closed issues: ${issues.data.filter(i => i.state === 'closed' && new Date(i.closed_at) > oneWeekAgo).length}
+            `;
+            
+            console.log(report);

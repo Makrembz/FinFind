@@ -1,0 +1,87 @@
+# Render Deployment Configuration for FinFind
+# https://render.com/docs/yaml-spec
+
+services:
+  # ===========================================================================
+  # Backend API Service
+  # ===========================================================================
+  - type: web
+    name: finfind-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
+    plan: starter
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHONPATH
+        value: /app
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: GROQ_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: COLLECTION_NAME
+        value: finfind_products
+      - key: USER_COLLECTION
+        value: finfind_users
+      - key: CORS_ORIGINS
+        fromService:
+          name: finfind-frontend
+          type: web
+          property: host
+    autoDeploy: true
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryPercent: 80
+      targetCPUPercent: 70
+
+  # ===========================================================================
+  # Frontend Service
+  # ===========================================================================
+  - type: web
+    name: finfind-frontend
+    runtime: docker
+    dockerfilePath: ./Frontend/Dockerfile
+    dockerContext: ./Frontend
+    region: oregon
+    plan: starter
+    branch: main
+    healthCheckPath: /
+    buildCommand: ""
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: finfind-backend
+          type: web
+          property: hostport
+    autoDeploy: true
+
+# ===========================================================================
+# Environment Groups
+# ===========================================================================
+envGroups:
+  - name: finfind-secrets
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+
+# ===========================================================================
+# Preview Environments
+# ===========================================================================
+previewEnvironments:
+  enabled: true
+  expireAfterDays: 7

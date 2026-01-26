@@ -1,0 +1,71 @@
+# FinFind Backend Dependencies
+# Data Generation and Core Services
+
+# === Web Framework ===
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# === Data Validation ===
+pydantic>=2.10.0
+pydantic-settings>=2.0.0
+
+# === Vector Database ===
+qdrant-client>=1.12.0
+
+# === LangChain & AI ===
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-groq>=0.2.0
+langchain-community>=0.3.0
+langgraph>=0.2.0
+
+# === Embeddings ===
+sentence-transformers>=3.0.0
+transformers>=4.40.0
+
+# === Data Generation ===
+faker>=33.0.0
+numpy>=2.0.0
+tqdm>=4.66.0
+
+# === HTTP Client ===
+httpx>=0.28.0
+
+# === Image Processing ===
+Pillow>=11.0.0
+
+# === Environment ===
+python-dotenv>=1.0.0
+
+# === Logging ===
+structlog>=24.0.0
+
+# === Testing ===
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
+pytest-cov>=4.0.0
+
+# === File Upload ===
+python-multipart>=0.0.18
+
+# === Multimodal - Image Search ===
+# CLIP for image embeddings (local)
+# Note: Requires torch - install separately based on your system
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+open-clip-torch>=2.24.0
+
+# === Multimodal - Voice Input ===
+# Whisper for speech-to-text (local)
+# Note: Requires ffmpeg installed on system
+openai-whisper>=20231117
+soundfile>=0.12.0
+
+# === Audio Processing ===
+librosa>=0.10.0
+
+# === Caching/Session (Optional) ===
+redis>=5.0.0
+
+# === Utilities ===
+tenacity>=8.2.0
+aiofiles>=23.0.0

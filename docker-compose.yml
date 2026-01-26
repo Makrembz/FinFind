@@ -1,0 +1,137 @@
+# FinFind Docker Compose Configuration
+# Local development and testing environment
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Backend API Service
+  # ===========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: finfind-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - QDRANT_URL=${QDRANT_URL:-https://your-cluster.qdrant.io}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
+      - COLLECTION_NAME=${COLLECTION_NAME:-finfind_products}
+      - USER_COLLECTION=${USER_COLLECTION:-finfind_users}
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    volumes:
+      - ./backend:/app
+      - backend-cache:/app/__pycache__
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - finfind-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Frontend Service
+  # ===========================================================================
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: finfind-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - finfind-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Local Qdrant (Optional - for fully local development)
+  # ===========================================================================
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: finfind-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    networks:
+      - finfind-network
+    profiles:
+      - local-db
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Nginx Reverse Proxy (Production-like setup)
+  # ===========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: finfind-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - finfind-network
+    profiles:
+      - production
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Redis Cache (Optional - for caching and rate limiting)
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: finfind-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - finfind-network
+    profiles:
+      - cache
+    restart: unless-stopped
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  finfind-network:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  backend-cache:
+  qdrant-storage:
+  redis-data:
