@@ -70,9 +70,9 @@ async def get_recommendations(
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     
     try:
-        # Fetch user profile
-        user_data = await qdrant.get_point(
-            collection="users",
+        # Fetch user profile (sync method)
+        user_data = qdrant.get_point(
+            collection="user_profiles",
             point_id=user_id
         )
         
@@ -82,7 +82,8 @@ async def get_recommendations(
                 detail=f"User {user_id} not found"
             )
         
-        user_payload = user_data.get("payload", {})
+        outer_user_payload = user_data.get("payload", {})
+        user_payload = outer_user_payload.get("payload", outer_user_payload)  # Handle nested payload
         user_vector = user_data.get("vector", [])
         preferences = user_payload.get("preferences", {})
         
@@ -126,28 +127,29 @@ async def get_recommendations(
                     preferences.get("style", "")
                 ])
                 if pref_text.strip():
-                    search_vector = await embedding_service.embed_text(pref_text)
+                    search_vector = embedding_service.embed(pref_text)
                 else:
                     search_vector = [0.0] * 384
         else:
             search_vector = [0.0] * 384
         
-        # Get user's past interactions to avoid recommending viewed items
-        past_interactions = await qdrant.scroll(
-            collection="interactions",
+        # Get user's past interactions to avoid recommending viewed items (sync method)
+        past_interactions = qdrant.scroll(
+            collection="user_interactions",
             limit=100,
             filters={"user_id": {"match": user_id}},
             with_payload=True
         )
         
-        viewed_product_ids = {
-            i.get("payload", {}).get("product_id")
-            for i in past_interactions
-            if i.get("payload", {}).get("product_id")
-        }
+        viewed_product_ids = set()
+        for i in past_interactions:
+            outer_interaction = i.get("payload", {})
+            inner_interaction = outer_interaction.get("payload", outer_interaction)
+            if inner_interaction.get("product_id"):
+                viewed_product_ids.add(inner_interaction.get("product_id"))
         
-        # Search for recommendations using MMR for diversity
-        results = await qdrant.mmr_search(
+        # Search for recommendations using MMR for diversity (sync method)
+        results = qdrant.mmr_search(
             collection="products",
             query_vector=search_vector,
             limit=limit + len(viewed_product_ids),  # Get extra to filter
@@ -169,7 +171,8 @@ async def get_recommendations(
             if len(recommendations) >= limit:
                 break
             
-            payload = result.get("payload", {})
+            outer_payload = result.get("payload", {})
+            payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
             score = result.get("score", 0.0)
             
             product = ProductSearchResult(
@@ -259,13 +262,13 @@ async def explain_recommendation(
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     
     try:
-        # Fetch user and product data
-        user_data = await qdrant.get_point(
-            collection="users",
+        # Fetch user and product data (sync methods)
+        user_data = qdrant.get_point(
+            collection="user_profiles",
             point_id=explanation_req.user_id
         )
         
-        product_data = await qdrant.get_point(
+        product_data = qdrant.get_point(
             collection="products",
             point_id=explanation_req.product_id
         )
@@ -282,8 +285,10 @@ async def explain_recommendation(
                 detail=f"Product {explanation_req.product_id} not found"
             )
         
-        user_payload = user_data.get("payload", {})
-        product_payload = product_data.get("payload", {})
+        outer_user_payload = user_data.get("payload", {})
+        outer_product_payload = product_data.get("payload", {})
+        user_payload = outer_user_payload.get("payload", outer_user_payload)  # Handle nested payload
+        product_payload = outer_product_payload.get("payload", outer_product_payload)  # Handle nested payload
         preferences = user_payload.get("preferences", {})
         
         # Analyze match factors
@@ -363,9 +368,9 @@ async def explain_recommendation(
         else:
             factor_scores["quality"] = 0.5
         
-        # Analyze interaction history
-        interactions = await qdrant.scroll(
-            collection="interactions",
+        # Analyze interaction history (sync method)
+        interactions = qdrant.scroll(
+            collection="user_interactions",
             limit=50,
             filters={"user_id": {"match": explanation_req.user_id}},
             with_payload=True
@@ -448,8 +453,8 @@ async def get_alternatives(
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     
     try:
-        # Get original product
-        original = await qdrant.get_point(
+        # Get original product (sync method)
+        original = qdrant.get_point(
             collection="products",
             point_id=product_id
         )
@@ -460,7 +465,8 @@ async def get_alternatives(
                 detail=f"Product {product_id} not found"
             )
         
-        original_payload = original.get("payload", {})
+        outer_original_payload = original.get("payload", {})
+        original_payload = outer_original_payload.get("payload", outer_original_payload)  # Handle nested payload
         original_vector = original.get("vector", [])
         original_price = original_payload.get("price", 0)
         original_rating = original_payload.get("rating_avg", 0)
@@ -485,8 +491,8 @@ async def get_alternatives(
         elif criteria == "better_rated":
             filters["rating_avg"] = {"gt": original_rating}
         
-        # Search for alternatives
-        results = await qdrant.mmr_search(
+        # Search for alternatives (sync method)
+        results = qdrant.mmr_search(
             collection="products",
             query_vector=search_vector,
             limit=limit * 2 + 1,  # Get extra for filtering
@@ -501,7 +507,8 @@ async def get_alternatives(
             if result.get("id") == product_id:
                 continue
             
-            payload = result.get("payload", {})
+            outer_payload = result.get("payload", {})
+            payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
             alt_price = payload.get("price", 0)
             alt_rating = payload.get("rating_avg", 0)
             similarity = result.get("score", 0)

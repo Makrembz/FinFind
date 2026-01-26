@@ -108,8 +108,8 @@ async def search_products(
     start_time = time.time()
     
     try:
-        # Generate query embedding
-        query_embedding = await embedder.embed(body.query)
+        # Generate query embedding (sync method)
+        query_embedding = embedder.embed(body.query)
         
         # Build Qdrant filters
         filters = {}
@@ -134,18 +134,17 @@ async def search_products(
             if body.filters.in_stock is not None:
                 filters["in_stock"] = {"match": body.filters.in_stock}
         
-        # Perform search
+        # Perform search (sync methods)
         if body.use_mmr:
-            results = await qdrant.mmr_search(
+            results = qdrant.mmr_search(
                 collection="products",
                 query_vector=query_embedding,
                 limit=body.limit,
-                score_threshold=body.score_threshold,
                 diversity=body.diversity,
                 filters=filters if filters else None
             )
         else:
-            results = await qdrant.semantic_search(
+            results = qdrant.semantic_search(
                 collection="products",
                 query_vector=query_embedding,
                 limit=body.limit,
@@ -156,15 +155,17 @@ async def search_products(
         # Format results
         products = []
         for result in results:
-            payload = result.get("payload", {})
+            outer_payload = result.get("payload", {})
+            # Handle nested payload structure from data generation
+            payload = outer_payload.get("payload", outer_payload)
             products.append(ProductResult(
                 id=result.get("id", ""),
-                name=payload.get("name", "Unknown"),
+                name=payload.get("title", payload.get("name", "Unknown")),
                 description=payload.get("description"),
                 price=payload.get("price", 0.0),
                 category=payload.get("category", "Unknown"),
                 brand=payload.get("brand"),
-                rating=payload.get("rating"),
+                rating=payload.get("rating_avg", payload.get("rating")),
                 image_url=payload.get("image_url"),
                 relevance_score=result.get("score", 0.0),
                 match_reason=_generate_match_reason(body.query, payload)
@@ -250,11 +251,11 @@ async def search_suggestions(
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     
     try:
-        # Generate embedding for partial query
-        query_embedding = await embedder.embed(q)
+        # Generate embedding for partial query (sync method)
+        query_embedding = embedder.embed(q)
         
-        # Search for similar products
-        results = await qdrant.semantic_search(
+        # Search for similar products (sync method)
+        results = qdrant.semantic_search(
             collection="products",
             query_vector=query_embedding,
             limit=limit * 2,  # Get more to extract unique names
@@ -266,8 +267,10 @@ async def search_suggestions(
         seen = set()
         
         for result in results:
-            payload = result.get("payload", {})
-            name = payload.get("name", "")
+            outer_payload = result.get("payload", {})
+            # Handle nested payload structure
+            payload = outer_payload.get("payload", outer_payload)
+            name = payload.get("title", payload.get("name", ""))
             category = payload.get("category", "")
             
             # Add product name
@@ -304,17 +307,19 @@ async def get_categories(
     Get all available product categories.
     """
     try:
-        # Scroll through products to get unique categories
-        # In production, this would be cached or stored separately
-        results = await qdrant.scroll(
+        # Scroll through products to get unique categories (sync method)
+        results = qdrant.scroll(
             collection="products",
             limit=1000,
-            with_payload=["category"]
+            with_payload=True
         )
         
         categories = set()
         for result in results:
-            category = result.get("payload", {}).get("category")
+            outer_payload = result.get("payload", {})
+            # Handle nested payload structure
+            payload = outer_payload.get("payload", outer_payload)
+            category = payload.get("category")
             if category:
                 categories.add(category)
         
@@ -340,16 +345,19 @@ async def get_brands(
         if category:
             filters = {"category": {"match": category}}
         
-        results = await qdrant.scroll(
+        results = qdrant.scroll(
             collection="products",
             limit=1000,
-            with_payload=["brand"],
+            with_payload=True,
             filters=filters
         )
         
         brands = set()
         for result in results:
-            brand = result.get("payload", {}).get("brand")
+            outer_payload = result.get("payload", {})
+            # Handle nested payload structure
+            payload = outer_payload.get("payload", outer_payload)
+            brand = payload.get("brand")
             if brand:
                 brands.add(brand)
         
@@ -368,7 +376,7 @@ async def get_brands(
 
 def _generate_match_reason(query: str, payload: dict) -> str:
     """Generate a human-readable match reason."""
-    name = payload.get("name", "").lower()
+    name = payload.get("title", payload.get("name", "")).lower()
     category = payload.get("category", "").lower()
     description = payload.get("description", "").lower()
     query_lower = query.lower()

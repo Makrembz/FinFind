@@ -6,7 +6,7 @@ e-commerce data including products, users, reviews, and interactions.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 from pathlib import Path
 
 

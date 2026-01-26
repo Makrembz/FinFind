@@ -191,17 +191,18 @@ async def search_by_image(
         # Format results
         products = []
         for result in search_results:
-            payload = result.get("payload", {})
+            outer_payload = result.get("payload", {})
+            payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
             products.append(SimilarProduct(
                 product_id=result.get("id", ""),
-                name=payload.get("name", "Unknown Product"),
+                name=payload.get("title", payload.get("name", "Unknown Product")),
                 description=payload.get("description"),
                 price=payload.get("price", 0.0),
                 category=payload.get("category", "Unknown"),
                 similarity_score=result.get("score", 0.0),
                 image_url=payload.get("image_url"),
                 brand=payload.get("brand"),
-                rating=payload.get("rating"),
+                rating=payload.get("rating_avg", payload.get("rating")),
                 visual_match_reasons=_generate_visual_match_reasons(
                     result.get("score", 0.0)
                 )
@@ -324,20 +325,21 @@ async def search_by_image_json(
         total_time = (time.time() - start_time) * 1000
         
         # Format results
-        products = [
-            SimilarProduct(
+        products = []
+        for r in search_results:
+            outer_payload = r.get("payload", {})
+            payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
+            products.append(SimilarProduct(
                 product_id=r.get("id", ""),
-                name=r.get("payload", {}).get("name", "Unknown"),
-                description=r.get("payload", {}).get("description"),
-                price=r.get("payload", {}).get("price", 0.0),
-                category=r.get("payload", {}).get("category", "Unknown"),
+                name=payload.get("title", payload.get("name", "Unknown")),
+                description=payload.get("description"),
+                price=payload.get("price", 0.0),
+                category=payload.get("category", "Unknown"),
                 similarity_score=r.get("score", 0.0),
-                image_url=r.get("payload", {}).get("image_url"),
-                brand=r.get("payload", {}).get("brand"),
-                rating=r.get("payload", {}).get("rating")
-            )
-            for r in search_results
-        ]
+                image_url=payload.get("image_url"),
+                brand=payload.get("brand"),
+                rating=payload.get("rating_avg", payload.get("rating"))
+            ))
         
         return ImageSearchResponse(
             success=True,
@@ -494,9 +496,10 @@ async def search_by_voice(
                 "products": [
                     {
                         "id": r.get("id"),
-                        "name": r.get("payload", {}).get("name"),
-                        "price": r.get("payload", {}).get("price"),
-                        "category": r.get("payload", {}).get("category"),
+                        "name": (r.get("payload", {}).get("payload", r.get("payload", {})).get("title") or
+                                 r.get("payload", {}).get("payload", r.get("payload", {})).get("name")),
+                        "price": r.get("payload", {}).get("payload", r.get("payload", {})).get("price"),
+                        "category": r.get("payload", {}).get("payload", r.get("payload", {})).get("category"),
                         "score": r.get("score")
                     }
                     for r in results
@@ -628,8 +631,9 @@ async def search_by_voice_json(
                 "products": [
                     {
                         "id": r.get("id"),
-                        "name": r.get("payload", {}).get("name"),
-                        "price": r.get("payload", {}).get("price"),
+                        "name": (r.get("payload", {}).get("payload", r.get("payload", {})).get("title") or
+                                 r.get("payload", {}).get("payload", r.get("payload", {})).get("name")),
+                        "price": r.get("payload", {}).get("payload", r.get("payload", {})).get("price"),
                         "score": r.get("score")
                     }
                     for r in results

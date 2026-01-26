@@ -5,7 +5,7 @@ Tools for explaining recommendations and product matches.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -453,7 +453,7 @@ class GetAttributeMatchesTool(MCPTool):
     )
     
     # Common attributes to analyze
-    DEFAULT_ATTRIBUTES = [
+    DEFAULT_ATTRIBUTES: ClassVar[List[str]] = [
         "name", "brand", "category", "price", "color",
         "size", "material", "features", "tags", "description"
     ]

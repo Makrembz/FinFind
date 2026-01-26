@@ -5,7 +5,7 @@ Tools for user profiling, affordability scoring, and personalized recommendation
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, ClassVar
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel, Field
@@ -478,7 +478,7 @@ class RankProductsByConstraintsTool(MCPTool):
     )
     
     # Default weights
-    DEFAULT_WEIGHTS = {
+    DEFAULT_WEIGHTS: ClassVar[Dict[str, float]] = {
         "relevance": 0.35,
         "affordability": 0.30,
         "preference_match": 0.20,
@@ -731,8 +731,8 @@ class GetContextualRecommendationsTool(MCPTool):
         sorted_products = sorted(
             products,
             key=lambda x: (
-                x.get("payload", {}).get("review_count", 0) * 
-                x.get("payload", {}).get("rating", 3)
+                x.get("payload", {}).get("payload", x.get("payload", {})).get("review_count", 0) * 
+                x.get("payload", {}).get("payload", x.get("payload", {})).get("rating_avg", x.get("payload", {}).get("payload", x.get("payload", {})).get("rating", 3))
             ),
             reverse=True
         )
@@ -746,10 +746,18 @@ class GetContextualRecommendationsTool(MCPTool):
         
         recommendations = []
         for p in sorted_products[:limit]:
+            outer_payload = p.get("payload", {})
+            payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
             recommendations.append({
                 "id": p["id"],
                 "recommendation_score": 0.5,  # Default score for cold start
-                **p.get("payload", {})
+                "name": payload.get("title", payload.get("name")),
+                "description": payload.get("description"),
+                "price": payload.get("price"),
+                "category": payload.get("category"),
+                "brand": payload.get("brand"),
+                "rating": payload.get("rating_avg", payload.get("rating")),
+                "image_url": payload.get("image_url")
             })
         
         return MCPToolOutput.success_response(

@@ -70,9 +70,9 @@ async def get_user_profile(
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     
     try:
-        # Fetch user from Qdrant
-        user_data = await qdrant.get_point(
-            collection="users",
+        # Fetch user from Qdrant (sync method)
+        user_data = qdrant.get_point(
+            collection="user_profiles",
             point_id=user_id
         )
         
@@ -82,28 +82,52 @@ async def get_user_profile(
                 detail=f"User {user_id} not found"
             )
         
-        payload = user_data.get("payload", {})
+        outer_payload = user_data.get("payload", {})
+        payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
         
         # Build profile from payload
+        # Extract financial context if present
+        financial_context = payload.get("financial_context", {})
+        preferences = payload.get("preferences", {})
+        
+        # Convert price_sensitivity and quality_preference to strings if they are floats
+        price_sensitivity = preferences.get("price_sensitivity", payload.get("price_sensitivity"))
+        if isinstance(price_sensitivity, (int, float)):
+            if price_sensitivity < 0.33:
+                price_sensitivity = "low"
+            elif price_sensitivity < 0.66:
+                price_sensitivity = "medium"
+            else:
+                price_sensitivity = "high"
+        
+        quality_preference = preferences.get("quality_preference", payload.get("quality_preference"))
+        if isinstance(quality_preference, (int, float)):
+            if quality_preference < 0.33:
+                quality_preference = "basic"
+            elif quality_preference < 0.66:
+                quality_preference = "standard"
+            else:
+                quality_preference = "premium"
+        
         profile = UserProfile(
             user_id=user_id,
             email=payload.get("email"),
-            name=payload.get("name"),
+            name=payload.get("name", payload.get("persona_type", "Unknown")),
             financial_profile=FinancialProfile(
-                monthly_income=payload.get("monthly_income"),
-                monthly_budget=payload.get("monthly_budget"),
-                credit_score_range=payload.get("credit_score_range"),
-                preferred_payment_methods=payload.get("preferred_payment_methods", []),
-                risk_tolerance=payload.get("risk_tolerance"),
-                savings_goal=payload.get("savings_goal")
+                monthly_income=financial_context.get("monthly_income", payload.get("monthly_income")),
+                monthly_budget=payload.get("budget_max", payload.get("monthly_budget")),
+                credit_score_range=financial_context.get("credit_score_range", payload.get("credit_score_range")),
+                preferred_payment_methods=financial_context.get("preferred_payment_methods", payload.get("preferred_payment_methods", [])),
+                risk_tolerance=financial_context.get("risk_tolerance", payload.get("risk_tolerance")),
+                savings_goal=financial_context.get("savings_goal", payload.get("savings_goal"))
             ),
             preferences=UserPreferences(
-                favorite_categories=payload.get("favorite_categories", []),
-                favorite_brands=payload.get("favorite_brands", []),
-                price_sensitivity=payload.get("price_sensitivity"),
-                quality_preference=payload.get("quality_preference"),
-                eco_friendly=payload.get("eco_friendly", False),
-                local_preference=payload.get("local_preference", False)
+                favorite_categories=preferences.get("categories", payload.get("favorite_categories", [])),
+                favorite_brands=preferences.get("brands", payload.get("favorite_brands", [])),
+                price_sensitivity=price_sensitivity if isinstance(price_sensitivity, str) else None,
+                quality_preference=quality_preference if isinstance(quality_preference, str) else None,
+                eco_friendly=preferences.get("eco_friendly", payload.get("eco_friendly", False)),
+                local_preference=preferences.get("local_preference", payload.get("local_preference", False))
             ),
             created_at=datetime.fromisoformat(payload.get("created_at", datetime.utcnow().isoformat())),
             updated_at=datetime.fromisoformat(payload["updated_at"]) if payload.get("updated_at") else None
@@ -150,9 +174,9 @@ async def update_user_profile(
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     
     try:
-        # Fetch existing user
-        existing = await qdrant.get_point(
-            collection="users",
+        # Fetch existing user (sync method)
+        existing = qdrant.get_point(
+            collection="user_profiles",
             point_id=user_id
         )
         
@@ -198,13 +222,13 @@ async def update_user_profile(
         
         payload["updated_at"] = datetime.utcnow().isoformat()
         
-        # Generate new embedding based on updated preferences
+        # Generate new embedding based on updated preferences (sync method)
         preference_text = _build_user_preference_text(payload)
-        new_embedding = await embedding_service.embed(preference_text)
+        new_embedding = embedding_service.embed(preference_text)
         
-        # Update in Qdrant
-        await qdrant.upsert_point(
-            collection="users",
+        # Update in Qdrant (sync method)
+        qdrant.upsert_point(
+            collection="user_profiles",
             point_id=user_id,
             vector=new_embedding,
             payload=payload
@@ -290,20 +314,20 @@ async def get_user_interactions(
         # Calculate offset
         offset = (page - 1) * page_size
         
-        # Fetch interactions from Qdrant
-        results = await qdrant.scroll(
-            collection="interactions",
+        # Fetch interactions from Qdrant (sync method)
+        results = qdrant.scroll(
+            collection="user_interactions",
             limit=page_size,
             offset=offset,
             filters=filters,
-            with_payload=True,
-            order_by="timestamp"
+            with_payload=True
         )
         
         # Format interactions
         interactions = []
         for result in results:
-            payload = result.get("payload", {})
+            outer_payload = result.get("payload", {})
+            payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
             interactions.append(UserInteraction(
                 id=result.get("id", ""),
                 user_id=payload.get("user_id", user_id),
@@ -376,10 +400,10 @@ async def log_user_interaction(
             "session_id": interaction.session_id
         }
         
-        # Store in Qdrant (using zero vector for filtering-only collection)
+        # Store in Qdrant (sync method, using zero vector for filtering-only collection)
         # In production, you might use a separate database for interactions
-        await qdrant.upsert_point(
-            collection="interactions",
+        qdrant.upsert_point(
+            collection="user_interactions",
             point_id=interaction_id,
             vector=[0.0] * 384,  # Placeholder vector
             payload=payload

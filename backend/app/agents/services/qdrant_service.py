@@ -60,7 +60,7 @@ class QdrantService:
                 url=self._config.url,
                 api_key=self._config.api_key,
                 timeout=60,
-                prefer_grpc=True  # Better performance
+                prefer_grpc=False  # Use HTTP for better compatibility
             )
             self._connected = True
             logger.info(f"Connected to Qdrant at {self._config.url}")
@@ -136,18 +136,15 @@ class QdrantService:
             # Build filter if provided
             qdrant_filter = self._build_filter(filters) if filters else None
             
-            results = self.client.search(
+            # Use query_points for qdrant-client 1.16+
+            results = self.client.query_points(
                 collection_name=collection,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=limit,
                 query_filter=qdrant_filter,
                 score_threshold=score_threshold or self._config.score_threshold,
                 with_payload=with_payload,
-                with_vectors=with_vectors,
-                search_params=SearchParams(
-                    hnsw_ef=128,  # Higher for better recall
-                    exact=False
-                )
+                with_vectors=with_vectors
             )
             
             return [
@@ -157,7 +154,7 @@ class QdrantService:
                     "payload": dict(r.payload) if r.payload else {},
                     "vector": r.vector if with_vectors else None
                 }
-                for r in results
+                for r in results.points
             ]
             
         except Exception as e:
@@ -196,16 +193,17 @@ class QdrantService:
         try:
             qdrant_filter = self._build_filter(filters) if filters else None
             
-            # First, get more candidates than needed
-            candidates = self.client.search(
+            # First, get more candidates than needed using query_points
+            result = self.client.query_points(
                 collection_name=collection,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=prefetch_limit,
                 query_filter=qdrant_filter,
                 with_vectors=True,
                 with_payload=True
             )
             
+            candidates = result.points
             if not candidates:
                 return []
             
@@ -422,18 +420,57 @@ class QdrantService:
             logger.error(f"Failed to get points batch: {e}")
             return []
     
+    def upsert_point(
+        self,
+        collection: str,
+        point_id: str,
+        vector: List[float],
+        payload: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Insert or update a single point.
+        
+        Args:
+            collection: Collection name.
+            point_id: Unique point ID.
+            vector: Embedding vector.
+            payload: Optional payload data.
+            
+        Returns:
+            True if successful.
+        """
+        try:
+            self.client.upsert(
+                collection_name=collection,
+                points=[
+                    models.PointStruct(
+                        id=point_id,
+                        vector=vector,
+                        payload=payload or {}
+                    )
+                ]
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to upsert point {point_id}: {e}")
+            raise MCPError(
+                code=MCPErrorCode.QDRANT_ERROR,
+                message=f"Upsert failed: {e}"
+            )
+    
     def scroll(
         self,
         collection: str,
         filters: Optional[Dict] = None,
         limit: int = 100,
-        offset: Optional[str] = None
-    ) -> Dict[str, Any]:
+        offset: Optional[str] = None,
+        with_payload: Union[bool, List[str]] = True
+    ) -> List[Dict[str, Any]]:
         """
         Scroll through collection with filters.
         
         Returns:
-            Dict with 'points' and 'next_offset'.
+            List of points with id and payload.
         """
         try:
             qdrant_filter = self._build_filter(filters) if filters else None
@@ -443,27 +480,21 @@ class QdrantService:
                 scroll_filter=qdrant_filter,
                 limit=limit,
                 offset=offset,
-                with_payload=True,
+                with_payload=with_payload,
                 with_vectors=False
             )
             
-            return {
-                "points": [
-                    {
-                        "id": str(point.id),
-                        "payload": dict(point.payload) if point.payload else {}
-                    }
-                    for point in results
-                ],
-                "next_offset": next_offset
-            }
+            return [
+                {
+                    "id": str(point.id),
+                    "payload": dict(point.payload) if point.payload else {}
+                }
+                for point in results
+            ]
             
         except Exception as e:
             logger.error(f"Scroll failed: {e}")
-            raise MCPError(
-                code=MCPErrorCode.QDRANT_ERROR,
-                message=f"Scroll failed: {e}"
-            )
+            return []  # Return empty list instead of raising to allow graceful degradation
     
     # ========================================
     # Filter Building

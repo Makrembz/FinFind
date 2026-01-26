@@ -11,10 +11,10 @@ import logging
 from typing import Optional, List, Dict, Any
 from functools import lru_cache
 
-from ..multimodal.image_processor import ImageProcessor, get_image_processor
-from ..multimodal.voice_processor import VoiceProcessor, get_voice_processor
-from ..multimodal.config import MultimodalConfig, get_multimodal_config
-from ..multimodal.schemas import (
+from ...multimodal.image_processor import ImageProcessor, get_image_processor
+from ...multimodal.voice_processor import VoiceProcessor, get_voice_processor
+from ...multimodal.config import MultimodalConfig, get_multimodal_config
+from ...multimodal.schemas import (
     ImageSearchResult,
     SimilarProduct,
     VoiceTranscriptionResult,
@@ -175,17 +175,18 @@ class MultimodalService:
         # Format products
         products = []
         for r in results:
-            payload = r.get("payload", {})
+            outer_payload = r.get("payload", {})
+            payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
             products.append(SimilarProduct(
                 product_id=str(r.get("id", "")),
-                name=payload.get("name", "Unknown"),
+                name=payload.get("title", payload.get("name", "Unknown")),
                 description=payload.get("description"),
                 price=payload.get("price", 0.0),
                 category=payload.get("category", "Unknown"),
                 similarity_score=r.get("score", 0.0),
                 image_url=payload.get("image_url"),
                 brand=payload.get("brand"),
-                rating=payload.get("rating")
+                rating=payload.get("rating_avg", payload.get("rating"))
             ))
         
         return ImageSearchResult(
@@ -329,10 +330,11 @@ class MultimodalService:
         # Format products
         products = []
         for r in results:
-            payload = r.get("payload", {})
+            outer_payload = r.get("payload", {})
+            payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
             products.append({
                 "id": r.get("id"),
-                "name": payload.get("name"),
+                "name": payload.get("title", payload.get("name")),
                 "price": payload.get("price"),
                 "category": payload.get("category"),
                 "score": r.get("score", 0.0)

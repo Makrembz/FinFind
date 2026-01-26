@@ -124,11 +124,10 @@ async def query_agents(
             context["user_id"] = user.user_id
         
         # Process query through orchestrator
-        result = await orchestrator.process(
-            query=body.query,
+        result = await orchestrator.process_request(
+            input_text=body.query,
             context=context,
-            session_id=session_id,
-            preferred_agent=body.preferred_agent
+            conversation_id=session_id
         )
         
         processing_time = (time.time() - start_time) * 1000
@@ -206,10 +205,10 @@ async def multi_turn_conversation(
         latest_query = user_messages[-1].content
         
         # Process through orchestrator
-        result = await orchestrator.process(
-            query=latest_query,
+        result = await orchestrator.process_request(
+            input_text=latest_query,
             context=context,
-            session_id=session_id
+            conversation_id=session_id
         )
         
         processing_time = (time.time() - start_time) * 1000
@@ -360,10 +359,9 @@ async def search_agent_query(
     if category:
         context["category"] = category
     
-    result = await orchestrator.process(
-        query=query,
-        context=context,
-        preferred_agent="search"
+    result = await orchestrator.process_request(
+        input_text=query,
+        context=context
     )
     
     return {
@@ -393,10 +391,9 @@ async def recommendation_agent_query(
             detail="Authentication required for recommendations"
         )
     
-    result = await orchestrator.process(
-        query="What products would you recommend for me?",
-        context={"user_id": user.user_id},
-        preferred_agent="recommendation"
+    result = await orchestrator.process_request(
+        input_text="What products would you recommend for me?",
+        user_id=user.user_id
     )
     
     return {
@@ -424,10 +421,9 @@ async def explain_product(
     if user:
         context["user_id"] = user.user_id
     
-    result = await orchestrator.process(
-        query=f"Why would you recommend product {product_id}?",
-        context=context,
-        preferred_agent="explainability"
+    result = await orchestrator.process_request(
+        input_text=f"Why would you recommend product {product_id}?",
+        context=context
     )
     
     return {
@@ -463,10 +459,9 @@ async def find_alternatives(
     elif price_range == "higher":
         query = f"Find upgrades for product {product_id}"
     
-    result = await orchestrator.process(
-        query=query,
-        context=context,
-        preferred_agent="alternative"
+    result = await orchestrator.process_request(
+        input_text=query,
+        context=context
     )
     
     return {

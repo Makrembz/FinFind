@@ -1,0 +1,116 @@
+{
+  "generated_at": "2026-01-26T13:48:02.471092",
+  "config": {
+    "num_products": 500,
+    "num_reviews": 1200,
+    "num_users": 100,
+    "num_interactions": 2000,
+    "random_seed": 42,
+    "generate_embeddings": true,
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2"
+  },
+  "products": {
+    "count": 500,
+    "category_distribution": {
+      "Books & Media": 59,
+      "Electronics": 119,
+      "Fashion": 92,
+      "Home & Kitchen": 72,
+      "Sports & Fitness": 82,
+      "Beauty & Personal Care": 76
+    },
+    "price_stats": {
+      "min": 5.99,
+      "max": 2900.0,
+      "avg": 165.38
+    }
+  },
+  "reviews": {
+    "total_reviews": 1200,
+    "average_rating": 3.9,
+    "rating_distribution": {
+      "1": 37,
+      "2": 93,
+      "3": 237,
+      "4": 420,
+      "5": 413
+    },
+    "sentiment_distribution": {
+      "positive": 846,
+      "neutral": 224,
+      "negative": 130
+    },
+    "verified_purchase_count": 967,
+    "verified_purchase_pct": 80.6,
+    "unique_products": 277,
+    "unique_users": 100
+  },
+  "users": {},
+  "interactions": {
+    "total_interactions": 1301,
+    "interaction_types": {
+      "search": 488,
+      "view": 544,
+      "add_to_cart": 144,
+      "purchase": 63,
+      "wishlist": 43,
+      "remove_from_cart": 19
+    },
+    "device_types": {
+      "mobile": 583,
+      "desktop": 550,
+      "tablet": 168
+    },
+    "unique_users": 100,
+    "unique_sessions": 300,
+    "conversions": 384,
+    "search_queries": [
+      "budget gaming",
+      "Books & Media Public Domain",
+      "something for Valentine's Day",
+      "Sports & Fitness Russell Athletic",
+      "men's clothing with noise canceling",
+      "help me find shoes",
+      "new Schwinn fitness accessorie",
+      "HP H818",
+      "large hair care",
+      "luxury personal hygiene",
+      "Cetaphil C265",
+      "Utopia U411",
+      "best value hair care",
+      "Ralph Lauren R216",
+      "gift for best friend",
+      "sportswear with USB-C",
+      "need a new gadget",
+      "what's a good hair care",
+      "Fashion",
+      "what's a good men's clothing"
+    ],
+    "avg_interactions_per_session": 4.34
+  },
+  "consistency": {
+    "products": {
+      "count": 500,
+      "categories": 6,
+      "brands": 106,
+      "price_range": {
+        "min": 5.99,
+        "max": 2900.0
+      }
+    },
+    "users": {
+      "count": 100,
+      "budget_range": {
+        "min": 40.93,
+        "max": 11804.13
+      }
+    },
+    "reviews": {
+      "count": 1200,
+      "products_with_reviews": 277
+    },
+    "interactions": {
+      "count": 1301
+    }
+  }
+}

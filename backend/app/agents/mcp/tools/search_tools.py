@@ -6,7 +6,7 @@ Tools for semantic search, query interpretation, and filtering.
 
 import logging
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -353,7 +353,7 @@ class InterpretVagueQueryTool(MCPTool):
     )
     
     # Intent patterns
-    INTENT_PATTERNS = {
+    INTENT_PATTERNS: ClassVar[Dict[str, str]] = {
         "browse": r"\b(looking|browsing|show|what|see)\b",
         "compare": r"\b(compare|versus|vs|difference|better)\b",
         "recommend": r"\b(recommend|suggest|best|top|good)\b",
@@ -363,7 +363,7 @@ class InterpretVagueQueryTool(MCPTool):
     }
     
     # Category keywords
-    CATEGORY_KEYWORDS = {
+    CATEGORY_KEYWORDS: ClassVar[Dict[str, List[str]]] = {
         "electronics": ["laptop", "phone", "computer", "tablet", "tv", "camera", "headphones"],
         "clothing": ["shirt", "pants", "dress", "shoes", "jacket", "clothes", "wear"],
         "home": ["furniture", "kitchen", "decor", "bed", "sofa", "table", "chair"],
@@ -372,7 +372,7 @@ class InterpretVagueQueryTool(MCPTool):
     }
     
     # Budget extraction patterns
-    BUDGET_PATTERNS = [
+    BUDGET_PATTERNS: ClassVar[List[tuple]] = [
         (r"\$(\d+(?:,\d{3})*(?:\.\d{2})?)", lambda m: float(m.group(1).replace(",", ""))),
         (r"under\s+\$?(\d+)", lambda m: float(m.group(1))),
         (r"less than\s+\$?(\d+)", lambda m: float(m.group(1))),
@@ -570,10 +570,11 @@ class ImageSimilaritySearchTool(MCPTool):
             # Format results
             products = []
             for r in results:
-                payload = r.get("payload", {})
+                outer_payload = r.get("payload", {})
+                payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
                 products.append({
                     "id": r.get("id"),
-                    "name": payload.get("name"),
+                    "name": payload.get("title", payload.get("name")),
                     "description": payload.get("description"),
                     "price": payload.get("price"),
                     "category": payload.get("category"),
@@ -749,10 +750,11 @@ class VoiceToTextSearchTool(MCPTool):
                 
                 products = []
                 for r in search_results:
-                    payload = r.get("payload", {})
+                    outer_payload = r.get("payload", {})
+                    payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
                     products.append({
                         "id": r.get("id"),
-                        "name": payload.get("name"),
+                        "name": payload.get("title", payload.get("name")),
                         "price": payload.get("price"),
                         "category": payload.get("category"),
                         "score": r.get("score", 0.0)

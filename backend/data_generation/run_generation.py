@@ -138,7 +138,13 @@ def load_existing_products(output_dir: Path) -> List[Product]:
     with open(products_file, 'r') as f:
         data = json.load(f)
     
-    products = [Product(**p) for p in data]
+    # Handle both list and dict formats
+    if isinstance(data, dict):
+        items = data.get('items', [])
+    else:
+        items = data
+    
+    products = [Product(**p) for p in items]
     logger.info(f"Loaded {len(products)} existing products")
     return products
 
@@ -153,7 +159,13 @@ def load_existing_users(output_dir: Path) -> List[UserProfile]:
     with open(users_file, 'r') as f:
         data = json.load(f)
     
-    users = [UserProfile(**u) for u in data]
+    # Handle both list and dict formats
+    if isinstance(data, dict):
+        items = data.get('items', [])
+    else:
+        items = data
+    
+    users = [UserProfile(**u) for u in items]
     logger.info(f"Loaded {len(users)} existing users")
     return users
 

@@ -5,7 +5,7 @@ Tools for finding product alternatives and substitutes.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -152,7 +152,9 @@ class FindSimilarInPriceRangeTool(MCPTool):
             
             for result in results:
                 if result["id"] != original_id:
-                    alt_price = result.get("payload", {}).get("price", 0)
+                    outer_payload = result.get("payload", {})
+                    payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
+                    alt_price = payload.get("price", 0)
                     savings = original_price - alt_price
                     savings_pct = (savings / original_price * 100) if original_price > 0 else 0
                     
@@ -162,7 +164,12 @@ class FindSimilarInPriceRangeTool(MCPTool):
                         "price": alt_price,
                         "savings": round(savings, 2),
                         "savings_percentage": round(savings_pct, 1),
-                        **result.get("payload", {})
+                        "name": payload.get("title", payload.get("name")),
+                        "description": payload.get("description"),
+                        "category": payload.get("category"),
+                        "brand": payload.get("brand"),
+                        "rating": payload.get("rating_avg", payload.get("rating")),
+                        "image_url": payload.get("image_url")
                     })
                 
                 if len(alternatives) >= limit:
@@ -237,7 +244,7 @@ class FindCategoryAlternativesTool(MCPTool):
     )
     
     # Category relationships
-    RELATED_CATEGORIES = {
+    RELATED_CATEGORIES: ClassVar[Dict[str, List[str]]] = {
         "laptops": ["tablets", "chromebooks", "desktops"],
         "smartphones": ["tablets", "feature_phones"],
         "headphones": ["earbuds", "speakers"],
@@ -302,18 +309,24 @@ class FindCategoryAlternativesTool(MCPTool):
                 )
                 
                 if results:
-                    alternatives_by_category[category] = [
-                        {
+                    category_alts = []
+                    for r in results:
+                        outer_payload = r.get("payload", {})
+                        payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
+                        category_alts.append({
                             "id": r["id"],
                             "similarity": round(r["score"], 3),
-                            "price": r.get("payload", {}).get("price", 0),
+                            "price": payload.get("price", 0),
                             "budget_remaining": round(
-                                user_budget - r.get("payload", {}).get("price", 0), 2
+                                user_budget - payload.get("price", 0), 2
                             ),
-                            **r.get("payload", {})
-                        }
-                        for r in results
-                    ]
+                            "name": payload.get("title", payload.get("name")),
+                            "description": payload.get("description"),
+                            "brand": payload.get("brand"),
+                            "rating": payload.get("rating_avg", payload.get("rating")),
+                            "image_url": payload.get("image_url")
+                        })
+                    alternatives_by_category[category] = category_alts
             except Exception as e:
                 logger.warning(f"Failed to search category {category}: {e}")
                 continue

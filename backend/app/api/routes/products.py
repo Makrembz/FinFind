@@ -71,8 +71,8 @@ async def get_product(
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     
     try:
-        # Fetch product from Qdrant
-        product_data = await qdrant.get_point(
+        # Fetch product from Qdrant (sync method)
+        product_data = qdrant.get_point(
             collection="products",
             point_id=product_id
         )
@@ -83,7 +83,9 @@ async def get_product(
                 detail=f"Product {product_id} not found"
             )
         
-        payload = product_data.get("payload", {})
+        outer_payload = product_data.get("payload", {})
+        # Handle nested payload structure
+        payload = outer_payload.get("payload", outer_payload)
         vector = product_data.get("vector", [])
         
         # Build product detail
@@ -110,13 +112,13 @@ async def get_product(
                        if k not in ["color", "size", "material", "brand", "model", "weight", "dimensions"]}
             ),
             image_url=payload.get("image_url", ""),
-            image_urls=payload.get("image_urls", []),
+            image_urls=payload.get("image_urls") or [],
             in_stock=payload.get("stock_status", "in_stock") == "in_stock",
             stock_quantity=payload.get("stock_quantity"),
-            payment_options=payload.get("payment_options", []),
+            payment_options=payload.get("payment_options") or [],
             rating_avg=payload.get("rating_avg", 0.0),
             review_count=payload.get("review_count", 0),
-            tags=payload.get("tags", []),
+            tags=payload.get("tags") or [],
             created_at=datetime.fromisoformat(
                 payload.get("created_at", datetime.utcnow().isoformat())
             ),
@@ -133,7 +135,7 @@ async def get_product(
                 search_vector = vector.get("text_vector", vector.get("", []))
             
             if search_vector:
-                similar_results = await qdrant.semantic_search(
+                similar_results = qdrant.semantic_search(
                     collection="products",
                     query_vector=search_vector,
                     limit=similar_limit + 1,  # +1 to exclude self
@@ -142,7 +144,8 @@ async def get_product(
                 
                 for result in similar_results:
                     if result.get("id") != product_id:
-                        p = result.get("payload", {})
+                        outer_payload = result.get("payload", {})
+                        p = outer_payload.get("payload", outer_payload)  # Handle nested payload
                         similar_products.append(ProductSearchResult(
                             id=result.get("id", ""),
                             name=p.get("title", p.get("name", "Unknown")),
@@ -213,8 +216,8 @@ async def get_product_reviews(
         # Calculate offset
         offset = (page - 1) * page_size
         
-        # Fetch reviews from Qdrant
-        results = await qdrant.scroll(
+        # Fetch reviews from Qdrant (sync method)
+        results = qdrant.scroll(
             collection="reviews",
             limit=page_size,
             offset=offset,
@@ -228,7 +231,8 @@ async def get_product_reviews(
         total_rating = 0.0
         
         for result in results:
-            payload = result.get("payload", {})
+            outer_payload = result.get("payload", {})
+            payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
             rating = payload.get("rating", 0)
             
             # Count ratings
@@ -243,7 +247,7 @@ async def get_product_reviews(
                 product_id=product_id,
                 rating=rating,
                 title=payload.get("title"),
-                content=payload.get("content", ""),
+                content=payload.get("text", payload.get("content", "")),
                 helpful_count=payload.get("helpful_count", 0),
                 verified_purchase=payload.get("verified_purchase", False),
                 created_at=datetime.fromisoformat(
@@ -338,9 +342,9 @@ async def log_product_interaction(
             "session_id": interaction.session_id
         }
         
-        # Store in Qdrant
-        await qdrant.upsert_point(
-            collection="interactions",
+        # Store in Qdrant (sync method)
+        qdrant.upsert_point(
+            collection="user_interactions",
             point_id=interaction_id,
             vector=[0.0] * 384,  # Placeholder for filter-only collection
             payload=payload
@@ -394,8 +398,8 @@ async def get_similar_products(
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     
     try:
-        # Get original product
-        product_data = await qdrant.get_point(
+        # Get original product (sync method)
+        product_data = qdrant.get_point(
             collection="products",
             point_id=product_id
         )
@@ -436,8 +440,8 @@ async def get_similar_products(
                     "lte": original_price * 1.2
                 }
         
-        # Search for similar products
-        results = await qdrant.mmr_search(
+        # Search for similar products (sync method)
+        results = qdrant.mmr_search(
             collection="products",
             query_vector=search_vector,
             limit=limit + 1,  # +1 to exclude self
