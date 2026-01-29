@@ -30,7 +30,7 @@ import type { UserPreferences, FinancialProfile } from "@/types";
 
 export default function ProfilePage() {
   // Demo user ID (in production, this would come from auth context)
-  const userId = "demo-user";
+  const userId = "013c3cb2-482a-55b0-9559-6688c3b78313";
 
   const { data: userData, isLoading } = useUser(userId);
   const updatePreferences = useUpdateUserPreferences(userId);

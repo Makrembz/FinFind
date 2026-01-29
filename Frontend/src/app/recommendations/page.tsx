@@ -13,8 +13,8 @@ import { useRecommendations, useTrendingProducts, useUserBrowsingHistory } from 
 import type { ProductSearchResult } from "@/types";
 
 export default function RecommendationsPage() {
-  // Demo user ID (in production, this would come from auth context)
-  const userId = "demo-user";
+  // Use a real user ID from Qdrant (in production, this would come from auth context)
+  const userId = "013c3cb2-482a-55b0-9559-6688c3b78313";
   const monthlyBudget = 1000;
 
   const {

@@ -244,7 +244,7 @@ export function useSendMessage(sessionId?: string) {
         return chatApi.sendMessage({
           sessionId: sessionId || "",
           message: data.message,
-          userId: "demo-user",
+          userId: "013c3cb2-482a-55b0-9559-6688c3b78313",
         });
       }
       return chatApi.sendMessage(data as ChatRequest);

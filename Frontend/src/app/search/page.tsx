@@ -128,6 +128,8 @@ function SearchPageContent() {
     if (!cart.includes(productId)) {
       cart.push(productId);
       localStorage.setItem("cart", JSON.stringify(cart));
+      // Dispatch event to update header count
+      window.dispatchEvent(new Event("cartUpdated"));
     }
   };
 
@@ -136,6 +138,8 @@ function SearchPageContent() {
     if (!wishlist.includes(productId)) {
       wishlist.push(productId);
       localStorage.setItem("wishlist", JSON.stringify(wishlist));
+      // Dispatch event to update header count
+      window.dispatchEvent(new Event("wishlistUpdated"));
     }
   };
 

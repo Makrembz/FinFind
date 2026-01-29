@@ -6,6 +6,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from "axios";
 import type {
   SearchRequest,
   SearchResponse,
+  SearchFilters,
   Product,
   ProductReview,
   User,
@@ -104,6 +105,19 @@ function transformSearchResponse(data: any): SearchResponse {
 // Search API
 // ============================================================================
 
+// Transform frontend filters to backend format
+function transformFilters(filters?: SearchFilters) {
+  if (!filters) return undefined;
+  return {
+    min_price: filters.priceRange?.min,
+    max_price: filters.priceRange?.max,
+    categories: filters.categories,
+    brands: filters.brands,
+    min_rating: filters.minRating,
+    in_stock: filters.inStock,
+  };
+}
+
 export const searchApi = {
   /**
    * Search products with text query
@@ -111,7 +125,7 @@ export const searchApi = {
   async searchProducts(request: SearchRequest): Promise<SearchResponse> {
     const response = await apiClient.post("/search/products", {
       query: request.query,
-      filters: request.filters,
+      filters: transformFilters(request.filters),
       limit: request.pageSize || 20,
       offset: ((request.page || 1) - 1) * (request.pageSize || 20),
       use_mmr: request.useMmr ?? true,
@@ -156,7 +170,7 @@ export const searchApi = {
    * Get search suggestions
    */
   async getSuggestions(query: string): Promise<{ suggestions: string[] }> {
-    const response = await apiClient.get<{ suggestions: string[] }>("/search/suggestions", {
+    const response = await apiClient.get<{ suggestions: string[] }>("/search/suggest", {
       params: { q: query },
     });
     return response.data;
@@ -308,7 +322,16 @@ export const userApi = {
     userId: string,
     preferences: Partial<import("@/types").UserPreferences>
   ): Promise<{ profile: User }> {
-    const response = await apiClient.put(`/users/${userId}/preferences`, preferences);
+    const response = await apiClient.put(`/users/${userId}/profile`, {
+      preferences: {
+        favorite_categories: preferences.favoriteCategories,
+        favorite_brands: preferences.favoriteBrands,
+        price_sensitivity: preferences.priceSensitivity,
+        quality_preference: preferences.qualityPreference,
+        eco_friendly: preferences.ecoFriendly,
+        local_preference: preferences.localPreference,
+      }
+    });
     return response.data;
   },
 
@@ -319,7 +342,16 @@ export const userApi = {
     userId: string,
     profile: Partial<import("@/types").FinancialProfile>
   ): Promise<{ profile: User }> {
-    const response = await apiClient.put(`/users/${userId}/financial`, profile);
+    const response = await apiClient.put(`/users/${userId}/profile`, {
+      financial_profile: {
+        monthly_income: profile.monthlyIncome,
+        monthly_budget: profile.monthlyBudget,
+        credit_score_range: profile.creditScoreRange,
+        preferred_payment_methods: profile.preferredPaymentMethods,
+        risk_tolerance: profile.riskTolerance,
+        savings_goal: profile.savingsGoal,
+      }
+    });
     return response.data;
   },
 };
@@ -353,9 +385,21 @@ export const recommendationsApi = {
       }
     );
     const data = response.data;
+    const reasons = data.reasons || {};
+    
+    // Map recommendations and attach reasons as matchExplanation
+    const recommendations = (data.recommendations || []).map((product: any) => {
+      const transformed = transformProduct(product);
+      const productReasons = reasons[transformed.id];
+      if (productReasons && productReasons.length > 0) {
+        transformed.matchExplanation = productReasons.join('. ');
+      }
+      return transformed;
+    });
+    
     return {
       ...data,
-      recommendations: (data.recommendations || []).map(transformProduct),
+      recommendations,
     };
   },
 
