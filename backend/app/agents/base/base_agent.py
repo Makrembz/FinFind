@@ -54,9 +54,12 @@ class BaseAgent(ABC):
         """
         self.config = config or get_config()
         self._llm: Optional[BaseChatModel] = None
+        self._fallback_llm: Optional[BaseChatModel] = None
         self._tools: List[BaseTool] = tools or []
         self._agent_executor: Optional[AgentExecutor] = None
+        self._fallback_executor: Optional[AgentExecutor] = None
         self._other_agents: Dict[str, 'BaseAgent'] = {}
+        self._using_fallback: bool = False
         
         # Initialize tools if not provided
         if not self._tools:
@@ -66,16 +69,24 @@ class BaseAgent(ABC):
     # LLM Management
     # ========================================
     
-    def _create_llm(self) -> BaseChatModel:
+    def _create_llm(self, use_fallback: bool = False) -> BaseChatModel:
         """Create the LLM instance (Groq)."""
+        model = self.config.llm.fallback_model if use_fallback else self.config.llm.model
         return ChatGroq(
-            model=self.config.llm.model,
+            model=model,
             api_key=self.config.llm.api_key,
             temperature=self.config.llm.temperature,
             max_tokens=self.config.llm.max_tokens,
             timeout=self.config.llm.timeout,
             max_retries=self.config.llm.max_retries,
         )
+    
+    @property
+    def fallback_llm(self) -> BaseChatModel:
+        """Get or create the fallback LLM instance (smaller/faster model)."""
+        if self._fallback_llm is None:
+            self._fallback_llm = self._create_llm(use_fallback=True)
+        return self._fallback_llm
     
     @property
     def llm(self) -> BaseChatModel:
@@ -167,6 +178,37 @@ class BaseAgent(ABC):
             self._agent_executor = self._create_agent_executor()
         return self._agent_executor
     
+    def _create_fallback_executor(self) -> AgentExecutor:
+        """Create agent executor with fallback (smaller) LLM."""
+        prompt = self._create_prompt_template()
+        
+        agent = create_tool_calling_agent(
+            llm=self.fallback_llm,
+            tools=self._tools,
+            prompt=prompt
+        )
+        
+        return AgentExecutor(
+            agent=agent,
+            tools=self._tools,
+            verbose=self.config.debug,
+            handle_parsing_errors=True,
+            max_iterations=10,
+            return_intermediate_steps=True
+        )
+    
+    @property
+    def fallback_executor(self) -> AgentExecutor:
+        """Get or create the fallback agent executor."""
+        if self._fallback_executor is None:
+            self._fallback_executor = self._create_fallback_executor()
+        return self._fallback_executor
+    
+    def _is_rate_limit_error(self, error: Exception) -> bool:
+        """Check if error is a rate limit error."""
+        error_str = str(error).lower()
+        return any(x in error_str for x in ['rate_limit', 'rate limit', '429', 'too many requests', 'tokens per'])
+    
     # ========================================
     # Agent Execution
     # ========================================
@@ -212,8 +254,21 @@ class BaseAgent(ABC):
             logger.info(f"[{self.agent_name}] Completed successfully")
             
         except Exception as e:
-            logger.exception(f"[{self.agent_name}] Error: {e}")
-            state.add_error(f"{self.agent_name}: {str(e)}")
+            # Check if we should try fallback model
+            if self._is_rate_limit_error(e) and self.config.llm.use_fallback_on_rate_limit:
+                logger.warning(f"[{self.agent_name}] Rate limit hit, trying fallback model ({self.config.llm.fallback_model})...")
+                try:
+                    executor_input = self._prepare_executor_input(input_text, state)
+                    result = await self.fallback_executor.ainvoke(executor_input)
+                    state = self._process_result(result, state)
+                    self._using_fallback = True
+                    logger.info(f"[{self.agent_name}] Completed successfully with fallback model")
+                except Exception as fallback_error:
+                    logger.exception(f"[{self.agent_name}] Fallback also failed: {fallback_error}")
+                    state.add_error(f"{self.agent_name}: {str(e)} (fallback also failed: {str(fallback_error)})")
+            else:
+                logger.exception(f"[{self.agent_name}] Error: {e}")
+                state.add_error(f"{self.agent_name}: {str(e)}")
         
         return state
     
@@ -248,8 +303,21 @@ class BaseAgent(ABC):
             logger.info(f"[{self.agent_name}] Completed successfully")
             
         except Exception as e:
-            logger.exception(f"[{self.agent_name}] Error: {e}")
-            state.add_error(f"{self.agent_name}: {str(e)}")
+            # Check if we should try fallback model
+            if self._is_rate_limit_error(e) and self.config.llm.use_fallback_on_rate_limit:
+                logger.warning(f"[{self.agent_name}] Rate limit hit, trying fallback model ({self.config.llm.fallback_model})...")
+                try:
+                    executor_input = self._prepare_executor_input(input_text, state)
+                    result = self.fallback_executor.invoke(executor_input)
+                    state = self._process_result(result, state)
+                    self._using_fallback = True
+                    logger.info(f"[{self.agent_name}] Completed successfully with fallback model")
+                except Exception as fallback_error:
+                    logger.exception(f"[{self.agent_name}] Fallback also failed: {fallback_error}")
+                    state.add_error(f"{self.agent_name}: {str(e)} (fallback also failed: {str(fallback_error)})")
+            else:
+                logger.exception(f"[{self.agent_name}] Error: {e}")
+                state.add_error(f"{self.agent_name}: {str(e)}")
         
         return state
     

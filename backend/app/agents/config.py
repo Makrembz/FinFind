@@ -38,6 +38,10 @@ class LLMConfig:
     model: str = field(
         default_factory=lambda: os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     )
+    # Fallback model for rate limiting or when primary model fails
+    fallback_model: str = field(
+        default_factory=lambda: os.getenv("GROQ_FALLBACK_MODEL", "llama-3.1-8b-instant")
+    )
     api_key: str = field(
         default_factory=lambda: os.getenv("GROQ_API_KEY", "")
     )
@@ -45,6 +49,7 @@ class LLMConfig:
     max_tokens: int = 4096
     timeout: int = 60
     max_retries: int = 3
+    use_fallback_on_rate_limit: bool = True
     
     # Rate limiting
     requests_per_minute: int = 30

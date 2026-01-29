@@ -341,13 +341,14 @@ Can filter by category and price."""
             
             search_filter = Filter(must=filter_conditions) if filter_conditions else None
             
-            # Search for products similar to user profile
-            results = client.search(
+            # Search for products similar to user profile using query_points (new API)
+            search_result = client.query_points(
                 collection_name=config.products_collection,
-                query_vector=user_vector,
+                query=user_vector,
                 query_filter=search_filter,
                 limit=limit * 2  # Get more to filter
             )
+            results = search_result.points
             
             # Filter out purchased products if needed
             purchased = set(user_profile.get('purchased_products', []))
@@ -471,13 +472,14 @@ Can filter to same category or price range."""
             
             search_filter = Filter(must=filter_conditions) if filter_conditions else None
             
-            # Search for similar products
-            results = client.search(
+            # Search for similar products using query_points (new API)
+            search_result = client.query_points(
                 collection_name=config.products_collection,
-                query_vector=source_vector,
+                query=source_vector,
                 query_filter=search_filter,
                 limit=limit + 1  # +1 to exclude self
             )
+            results = search_result.points
             
             # Format results (excluding the source product)
             similar_products = []

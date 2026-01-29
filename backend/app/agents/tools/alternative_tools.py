@@ -159,13 +159,14 @@ Can exclude specific products from results."""
             
             search_filter = Filter(must=filter_conditions) if filter_conditions else None
             
-            # Search for similar products
-            results = client.search(
+            # Search for similar products using query_points (new API)
+            search_result = client.query_points(
                 collection_name=config.products_collection,
-                query_vector=source_vector,
+                query=source_vector,
                 query_filter=search_filter,
                 limit=limit + len(exclude_ids) + 1  # Extra to account for exclusions
             )
+            results = search_result.points
             
             # Filter and format results
             alternatives = []
@@ -402,13 +403,14 @@ Reasons for alternatives: over_budget, out_of_stock, low_rating, not_available""
             
             search_filter = Filter(must=filter_conditions) if filter_conditions else None
             
-            # Search for alternatives
-            results = client.search(
+            # Search for alternatives using query_points (new API)
+            search_result = client.query_points(
                 collection_name=config.qdrant.products_collection,
-                query_vector=search_vector,
+                query=search_vector,
                 query_filter=search_filter,
                 limit=num_suggestions + 1  # +1 to exclude original if present
             )
+            results = search_result.points
             
             # Filter and format alternatives
             original_id = original_product.get('id') or original_product.get('original_id')
