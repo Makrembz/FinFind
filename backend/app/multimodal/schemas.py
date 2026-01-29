@@ -140,6 +140,16 @@ class SimilarProduct(BaseModel):
         description="Visual similarity score"
     )
     
+    # Ranking info
+    ranking_score: Optional[float] = Field(
+        default=None,
+        description="Combined ranking score"
+    )
+    rank: Optional[int] = Field(
+        default=None,
+        description="Position in ranked results"
+    )
+    
     # Visual match details
     visual_match_reasons: Optional[List[str]] = Field(
         default=None,

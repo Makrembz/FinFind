@@ -115,7 +115,8 @@ class QdrantService:
         filters: Optional[Dict] = None,
         score_threshold: Optional[float] = None,
         with_payload: bool = True,
-        with_vectors: bool = False
+        with_vectors: bool = False,
+        vector_name: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Perform semantic search on a collection.
@@ -128,6 +129,7 @@ class QdrantService:
             score_threshold: Minimum similarity score.
             with_payload: Include payload in results.
             with_vectors: Include vectors in results.
+            vector_name: Named vector to search (e.g., "text", "image"). None for default.
             
         Returns:
             List of search results with scores.
@@ -136,16 +138,23 @@ class QdrantService:
             # Build filter if provided
             qdrant_filter = self._build_filter(filters) if filters else None
             
+            # Build query params
+            query_params = {
+                "collection_name": collection,
+                "query": query_vector,
+                "limit": limit,
+                "query_filter": qdrant_filter,
+                "score_threshold": score_threshold or self._config.score_threshold,
+                "with_payload": with_payload,
+                "with_vectors": with_vectors
+            }
+            
+            # Add named vector if specified
+            if vector_name:
+                query_params["using"] = vector_name
+            
             # Use query_points for qdrant-client 1.16+
-            results = self.client.query_points(
-                collection_name=collection,
-                query=query_vector,
-                limit=limit,
-                query_filter=qdrant_filter,
-                score_threshold=score_threshold or self._config.score_threshold,
-                with_payload=with_payload,
-                with_vectors=with_vectors
-            )
+            results = self.client.query_points(**query_params)
             
             return [
                 {
@@ -172,7 +181,8 @@ class QdrantService:
         limit: int = 10,
         diversity: float = 0.3,
         filters: Optional[Dict] = None,
-        prefetch_limit: int = 50
+        prefetch_limit: int = 50,
+        vector_name: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         MMR (Maximal Marginal Relevance) search for diverse results.
@@ -186,6 +196,7 @@ class QdrantService:
             diversity: Diversity factor (0-1, higher = more diverse).
             filters: Qdrant filter conditions.
             prefetch_limit: Number of candidates to consider.
+            vector_name: Named vector to search (e.g., "text", "image"). None for default.
             
         Returns:
             List of diverse search results.
@@ -193,15 +204,22 @@ class QdrantService:
         try:
             qdrant_filter = self._build_filter(filters) if filters else None
             
+            # Build query params
+            query_params = {
+                "collection_name": collection,
+                "query": query_vector,
+                "limit": prefetch_limit,
+                "query_filter": qdrant_filter,
+                "with_vectors": True,
+                "with_payload": True
+            }
+            
+            # Add named vector if specified
+            if vector_name:
+                query_params["using"] = vector_name
+            
             # First, get more candidates than needed using query_points
-            result = self.client.query_points(
-                collection_name=collection,
-                query=query_vector,
-                limit=prefetch_limit,
-                query_filter=qdrant_filter,
-                with_vectors=True,
-                with_payload=True
-            )
+            result = self.client.query_points(**query_params)
             
             candidates = result.points
             if not candidates:
@@ -212,7 +230,8 @@ class QdrantService:
                 query_vector=query_vector,
                 candidates=candidates,
                 k=limit,
-                lambda_param=1 - diversity
+                lambda_param=1 - diversity,
+                vector_name=vector_name
             )
             
             return [
@@ -237,7 +256,8 @@ class QdrantService:
         query_vector: List[float],
         candidates: List,
         k: int,
-        lambda_param: float = 0.7
+        lambda_param: float = 0.7,
+        vector_name: Optional[str] = None
     ) -> List:
         """
         Apply MMR algorithm to select diverse results.
@@ -252,6 +272,20 @@ class QdrantService:
         query_vec = np.array(query_vector)
         selected = []
         remaining = list(candidates)
+        
+        def get_vector(point) -> np.ndarray:
+            """Extract vector from point, handling named vectors."""
+            vec = point.vector
+            # Named vectors return a dict like {"text": [...], "image": [...]}
+            if isinstance(vec, dict):
+                if vector_name and vector_name in vec:
+                    return np.array(vec[vector_name])
+                # If no specific vector_name, use the first available
+                first_key = next(iter(vec.keys()), None)
+                if first_key:
+                    return np.array(vec[first_key])
+                return np.array([])
+            return np.array(vec) if vec else np.array([])
         
         # Select first by pure relevance
         first = max(remaining, key=lambda x: x.score)
@@ -268,9 +302,12 @@ class QdrantService:
                 relevance = candidate.score
                 
                 # Max similarity to already selected
-                candidate_vec = np.array(candidate.vector)
+                candidate_vec = get_vector(candidate)
+                if len(candidate_vec) == 0:
+                    continue
+                    
                 max_sim = max(
-                    self._cosine_similarity(candidate_vec, np.array(s.vector))
+                    self._cosine_similarity(candidate_vec, get_vector(s))
                     for s in selected
                 )
                 
@@ -390,6 +427,29 @@ class QdrantService:
             
         except Exception as e:
             logger.error(f"Failed to get point {point_id}: {e}")
+            return None
+    
+    def get_user_profile(
+        self,
+        user_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get user profile by user ID.
+        
+        Args:
+            user_id: The user's ID (also the point ID in user_profiles collection)
+            
+        Returns:
+            User profile data including financial context and preferences
+        """
+        try:
+            return self.get_point(
+                collection=self.user_profiles_collection,
+                point_id=user_id,
+                with_vector=False
+            )
+        except Exception as e:
+            logger.warning(f"Failed to get user profile {user_id}: {e}")
             return None
     
     def get_points_batch(

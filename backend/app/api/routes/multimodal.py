@@ -47,6 +47,7 @@ from ...multimodal.schemas import (
     MultimodalErrorCode
 )
 from ...agents.services.qdrant_service import QdrantService
+from ...agents.services.ranking_service import rank_search_results, RankingStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -151,46 +152,68 @@ async def search_by_image(
         # Search Qdrant
         search_start = time.time()
         
-        # Build filters
+        # Build filters - use "range" wrapper for numeric conditions
         filters = {}
-        if max_price is not None:
-            filters["price"] = {"lte": max_price}
-        if min_price is not None:
-            if "price" in filters:
-                filters["price"]["gte"] = min_price
-            else:
-                filters["price"] = {"gte": min_price}
+        if min_price is not None or max_price is not None:
+            price_range = {}
+            if min_price is not None:
+                price_range["gte"] = min_price
+            if max_price is not None:
+                price_range["lte"] = max_price
+            filters["price"] = {"range": price_range}
         
         if categories:
             category_list = [c.strip() for c in categories.split(",")]
             filters["category"] = {"any": category_list}
         
-        # Perform search
+        # Perform search using "image" named vector
+        # The embedding is generated from CLIP (512-dim) for image similarity search
         if use_mmr:
-            search_results = await qdrant_service.mmr_search(
+            search_results = qdrant_service.mmr_search(
                 collection="products",
                 query_vector=embedding_result.embedding,
                 limit=limit,
-                score_threshold=score_threshold,
                 diversity=diversity_factor,
                 filters=filters if filters else None,
-                vector_name="image_vector"  # Search against image embeddings
+                vector_name="image"  # Search against image embeddings
             )
         else:
-            search_results = await qdrant_service.semantic_search(
+            search_results = qdrant_service.semantic_search(
                 collection="products",
                 query_vector=embedding_result.embedding,
-                limit=limit,
+                limit=limit * 2,  # Fetch more for ranking
                 score_threshold=score_threshold,
                 filters=filters if filters else None,
-                vector_name="image_vector"
+                vector_name="image"  # Search against image embeddings
             )
         
         search_time = (time.time() - search_start) * 1000
         
+        # Apply ranking for better results
+        ranking_context = None
+        if user:
+            ranking_context = {
+                "user_id": user.user_id,
+                "budget_max": max_price,
+                "budget_min": min_price,
+                "preferred_categories": [c.strip() for c in categories.split(",")] if categories else [],
+                "price_sensitivity": 0.5
+            }
+        
+        ranked_results = rank_search_results(
+            products=search_results,
+            strategy=RankingStrategy.BALANCED,
+            user_context=ranking_context,
+            diversity_factor=diversity_factor if use_mmr else 0,
+            query="image search"
+        )
+        
+        # Limit to requested count after ranking
+        ranked_results = ranked_results[:limit]
+        
         # Format results
         products = []
-        for result in search_results:
+        for idx, result in enumerate(ranked_results):
             outer_payload = result.get("payload", {})
             payload = outer_payload.get("payload", outer_payload)  # Handle nested payload
             products.append(SimilarProduct(
@@ -205,7 +228,9 @@ async def search_by_image(
                 rating=payload.get("rating_avg", payload.get("rating")),
                 visual_match_reasons=_generate_visual_match_reasons(
                     result.get("score", 0.0)
-                )
+                ),
+                ranking_score=result.get("ranking_score"),
+                rank=idx + 1
             ))
         
         total_time = (time.time() - start_time) * 1000
@@ -298,27 +323,26 @@ async def search_by_image_json(
         if body.categories:
             filters["category"] = {"any": body.categories}
         
-        # Search
+        # Search using "image" named vector
         search_start = time.time()
         
         if body.use_mmr:
-            search_results = await qdrant_service.mmr_search(
+            search_results = qdrant_service.mmr_search(
                 collection="products",
                 query_vector=embedding_result.embedding,
                 limit=body.limit,
-                score_threshold=body.score_threshold,
                 diversity=body.diversity_factor,
                 filters=filters if filters else None,
-                vector_name="image_vector"
+                vector_name="image"  # Search against image embeddings
             )
         else:
-            search_results = await qdrant_service.semantic_search(
+            search_results = qdrant_service.semantic_search(
                 collection="products",
                 query_vector=embedding_result.embedding,
                 limit=body.limit,
                 score_threshold=body.score_threshold,
                 filters=filters if filters else None,
-                vector_name="image_vector"
+                vector_name="image"  # Search against image embeddings
             )
         
         search_time = (time.time() - search_start) * 1000

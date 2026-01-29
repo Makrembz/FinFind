@@ -208,6 +208,14 @@ class ImageProcessor:
         # Generate embedding
         with torch.no_grad():
             image_features = self._model.get_image_features(**inputs)
+            
+            # Handle BaseModelOutputWithPooling if needed
+            if hasattr(image_features, 'pooler_output'):
+                image_features = image_features.pooler_output
+            elif not isinstance(image_features, torch.Tensor):
+                # Try to extract tensor from dict-like output
+                if hasattr(image_features, 'last_hidden_state'):
+                    image_features = image_features.last_hidden_state[:, 0, :]
         
         # Normalize
         embedding = image_features.cpu().numpy().flatten()

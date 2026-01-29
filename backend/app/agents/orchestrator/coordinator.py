@@ -222,9 +222,11 @@ class AgentOrchestrator:
             response = {
                 "success": True,
                 "conversation_id": conv_context.conversation_id,
-                "output": state.output_text,
+                "response": state.output_text,  # Use 'response' to match route expectations
+                "output": state.output_text,    # Keep 'output' for backward compatibility
                 "products": state.output_products,
                 "explanations": state.output_explanations,
+                "agent_used": state.current_agent,  # Add agent_used field
                 "agents_used": state.agent_chain,
                 "execution_time_ms": state.execution_time_ms,
                 "errors": state.errors,
@@ -237,8 +239,10 @@ class AgentOrchestrator:
                 "success": False,
                 "conversation_id": conv_context.conversation_id,
                 "error": str(e),
+                "response": "I'm sorry, something went wrong. Please try again.",
                 "output": "I'm sorry, something went wrong. Please try again.",
                 "products": [],
+                "agent_used": state.current_agent if state else None,
                 "agents_used": state.agent_chain if state else []
             }
         
