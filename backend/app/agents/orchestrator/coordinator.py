@@ -185,9 +185,12 @@ class AgentOrchestrator:
         start_time = datetime.utcnow()
         
         # Get or create conversation context
+        conv_context = None
         if conversation_id:
             conv_context = self._context_manager.get_context(conversation_id)
-        else:
+        
+        # If conversation doesn't exist or no ID provided, create a new one
+        if conv_context is None:
             conv_context = self._context_manager.create_context(user_id=user_id)
         
         # Add user message

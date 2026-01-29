@@ -157,7 +157,8 @@ def test_recommendations():
 
 def test_health_check():
     """Test health check endpoint."""
-    resp = requests.get(f"{BASE_URL}/health").json()
+    # Health endpoint is at root, not under /api/v1
+    resp = requests.get("http://localhost:8000/health").json()
     print(f"\n{'='*60}")
     print(f"Test: Health Check")
     print(f"Status: {'✓ PASS' if resp.get('status') == 'healthy' else '✗ FAIL'}")

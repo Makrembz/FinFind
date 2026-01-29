@@ -235,6 +235,83 @@ async def multi_turn_conversation(
         )
 
 
+# ==============================================================================
+# Session Management Endpoints
+# ==============================================================================
+
+# In-memory session storage (in production, use Redis or database)
+_sessions: Dict[str, Dict[str, Any]] = {}
+
+
+class CreateSessionRequest(BaseModel):
+    """Request to create a new session."""
+    user_id: str = Field(..., description="User ID for the session")
+
+
+class SessionResponse(BaseModel):
+    """Response with session information."""
+    sessionId: str
+    userId: str
+    createdAt: str
+    messages: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+@router.post("/session", response_model=SessionResponse)
+async def create_session(
+    body: CreateSessionRequest,
+    _rate_limit: None = Depends(check_rate_limit)
+):
+    """
+    Create a new chat session.
+    """
+    session_id = str(uuid.uuid4())
+    created_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    
+    _sessions[session_id] = {
+        "user_id": body.user_id,
+        "created_at": created_at,
+        "messages": []
+    }
+    
+    return SessionResponse(
+        sessionId=session_id,
+        userId=body.user_id,
+        createdAt=created_at,
+        messages=[]
+    )
+
+
+@router.get("/session/{session_id}")
+async def get_session(
+    session_id: str,
+    _rate_limit: None = Depends(check_rate_limit)
+):
+    """
+    Get session details and history.
+    """
+    session = _sessions.get(session_id)
+    
+    if not session:
+        # Return empty session if not found (new session)
+        return {
+            "session": {
+                "sessionId": session_id,
+                "userId": "",
+                "createdAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "messages": []
+            }
+        }
+    
+    return {
+        "session": {
+            "sessionId": session_id,
+            "userId": session["user_id"],
+            "createdAt": session["created_at"],
+            "messages": session["messages"]
+        }
+    }
+
+
 @router.get("/list", response_model=AgentListResponse)
 async def list_agents(
     orchestrator: AgentOrchestrator = Depends(get_orchestrator)

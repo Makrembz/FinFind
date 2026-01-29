@@ -235,6 +235,16 @@ async def update_user_profile(
         )
         
         # Return updated profile
+        # Handle price_sensitivity conversion (might be float in old data)
+        price_sensitivity = payload.get("price_sensitivity")
+        if isinstance(price_sensitivity, (int, float)):
+            if price_sensitivity <= 0.33:
+                price_sensitivity = "low"
+            elif price_sensitivity <= 0.66:
+                price_sensitivity = "medium"
+            else:
+                price_sensitivity = "high"
+        
         profile = UserProfile(
             user_id=user_id,
             email=payload.get("email"),
@@ -250,7 +260,7 @@ async def update_user_profile(
             preferences=UserPreferences(
                 favorite_categories=payload.get("favorite_categories", []),
                 favorite_brands=payload.get("favorite_brands", []),
-                price_sensitivity=payload.get("price_sensitivity"),
+                price_sensitivity=price_sensitivity,
                 quality_preference=payload.get("quality_preference"),
                 eco_friendly=payload.get("eco_friendly", False),
                 local_preference=payload.get("local_preference", False)

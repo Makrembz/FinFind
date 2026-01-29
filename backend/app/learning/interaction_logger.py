@@ -481,8 +481,8 @@ class InteractionLogger:
             
             # Batch upsert to Qdrant
             # Note: For production, ensure collection exists with proper schema
-            await self._qdrant_client.upsert_points(
-                collection_name=self._collection,
+            self._qdrant_client.upsert_points(
+                collection=self._collection,
                 points=points
             )
             
@@ -512,22 +512,23 @@ class InteractionLogger:
                 from ..agents.services.qdrant_service import get_qdrant_service
                 self._qdrant_client = get_qdrant_service()
             
-            filters = {"must": [{"key": "context.user_id", "match": {"value": user_id}}]}
+            # Build filter in the format expected by _build_filter
+            # If user_id is "*" (wildcard), don't filter by user
+            filters = {}
+            if user_id and user_id != "*":
+                filters["context.user_id"] = {"match": user_id}
             
             if interaction_types:
                 type_values = [it.value for it in interaction_types]
-                filters["must"].append({
-                    "key": "interaction_type",
-                    "match": {"any": type_values}
-                })
+                filters["interaction_type"] = {"any": type_values}
             
-            results = await self._qdrant_client.scroll(
-                collection_name=self._collection,
-                scroll_filter=filters,
+            results = self._qdrant_client.scroll(
+                collection=self._collection,
+                filters=filters if filters else None,
                 limit=limit
             )
             
-            return [Interaction.from_dict(r.payload) for r in results]
+            return [Interaction.from_dict(r["payload"]) for r in results]
             
         except Exception as e:
             logger.warning(f"Qdrant read failed: {e}")

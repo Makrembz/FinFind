@@ -309,9 +309,15 @@ async def explain_recommendation(
             factor_scores["category_match"] = 0.3
         
         # Brand preference
-        preferred_brands = preferences.get("preferred_brands", "")
+        preferred_brands = preferences.get("preferred_brands", [])
         product_brand = product_payload.get("brand", "")
-        if product_brand and product_brand.lower() in preferred_brands.lower():
+        # Handle both list and string formats
+        if isinstance(preferred_brands, str):
+            preferred_brands = [preferred_brands] if preferred_brands else []
+        brand_match = product_brand and any(
+            product_brand.lower() == b.lower() for b in preferred_brands
+        )
+        if brand_match:
             factors.append({
                 "type": "brand_preference",
                 "description": f"This product is from a brand you prefer: {product_brand}",
@@ -453,10 +459,11 @@ async def get_alternatives(
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     
     try:
-        # Get original product (sync method)
+        # Get original product (sync method) - need vector for similarity search
         original = qdrant.get_point(
             collection="products",
-            point_id=product_id
+            point_id=product_id,
+            with_vector=True
         )
         
         if not original:

@@ -217,31 +217,18 @@ Set use_mmr=True for diverse results."""
             
             search_filter = Filter(must=filter_conditions) if filter_conditions else None
             
-            # Execute search
-            if use_mmr:
-                # MMR search for diversity
-                results = client.search(
-                    collection_name=collection_name,
-                    query_vector=query_vector,
-                    query_filter=search_filter,
-                    limit=limit,
-                    search_params=SearchParams(
-                        hnsw_ef=128,
-                        exact=False
-                    )
-                )
-            else:
-                # Standard similarity search
-                results = client.search(
-                    collection_name=collection_name,
-                    query_vector=query_vector,
-                    query_filter=search_filter,
-                    limit=limit
-                )
+            # Execute search using query_points (qdrant-client 1.16+)
+            results = client.query_points(
+                collection_name=collection_name,
+                query=query_vector,
+                query_filter=search_filter,
+                limit=limit,
+                with_payload=True
+            )
             
             # Format results
             formatted_results = []
-            for result in results:
+            for result in results.points:
                 item = {
                     "id": str(result.id),
                     "score": round(result.score, 4),

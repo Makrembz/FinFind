@@ -1,170 +1,135 @@
 #!/usr/bin/env python3
-"""Test all FinFind APIs."""
-
+"""
+Comprehensive API Test Script for FinFind Backend
+Tests all endpoints with real data from Qdrant
+"""
 import requests
 import json
+from typing import Dict, Any, List, Tuple
 
-BASE = 'http://localhost:8000'
+BASE_URL = "http://localhost:8000/api/v1"
 
-# Get actual IDs from Qdrant
-def get_sample_ids():
-    """Fetch actual IDs from Qdrant collections."""
-    from app.agents.services.qdrant_service import get_qdrant_service
-    qdrant = get_qdrant_service()
-    
-    products = qdrant.scroll('products', limit=1)
-    users = qdrant.scroll('user_profiles', limit=1)
-    
-    product_id = products[0]['id'] if products else None
-    user_id = users[0]['id'] if users else None
-    
-    return product_id, user_id
-
-def test(name, method, url, data=None, params=None):
-    """Test an API endpoint."""
+def test_endpoint(name: str, method: str, url: str, **kwargs) -> Tuple[bool, str, Any]:
+    """Test a single endpoint and return success status, message, and response data."""
     try:
-        if method == 'GET':
-            r = requests.get(url, params=params, timeout=15)
+        response = requests.request(method, url, timeout=30, **kwargs)
+        data = response.json() if response.text else {}
+        if response.status_code in [200, 201]:
+            return True, f"✓ {name}: OK ({response.status_code})", data
         else:
-            r = requests.post(url, json=data, timeout=60)
-        ok = r.status_code in [200, 201]
-        symbol = "✓" if ok else "✗"
-        print(f"{symbol} {name}: {r.status_code}")
-        if ok:
-            resp = r.json()
-            if isinstance(resp, dict):
-                print(f"   Keys: {list(resp.keys())[:6]}")
-                # Show counts for data endpoints
-                for key in ['products', 'results', 'recommendations', 'alternatives']:
-                    if key in resp and isinstance(resp[key], list):
-                        print(f"   {key.capitalize()}: {len(resp[key])} items")
-            elif isinstance(resp, list):
-                print(f"   Items: {len(resp)}")
-        else:
-            print(f"   Error: {r.text[:150]}")
-        return ok, r
+            error = data.get("error", {}).get("message", data.get("detail", str(response.text)[:100]))
+            return False, f"✗ {name}: {response.status_code} - {error}", data
     except Exception as e:
-        print(f"✗ {name}: {e}")
-        return False, None
+        return False, f"✗ {name}: Error - {str(e)[:100]}", None
 
-
-def main():
-    results = {"passed": 0, "failed": 0}
+def run_tests():
+    """Run all API tests."""
+    results = []
     
-    print("=" * 65)
-    print("              FINFIND API TEST SUITE")
-    print("=" * 65)
+    # Use real IDs from the Qdrant database (UUIDs)
+    USER_ID = "013c3cb2-482a-55b0-9559-6688c3b78313"  # luxury_shopper
+    PRODUCT_ID = "02308d23-3611-5cf3-81bf-169d137f9a2b"  # Vitamix blender
     
-    # Get actual IDs
-    print("\n📋 Getting sample IDs from Qdrant...")
-    product_id, user_id = get_sample_ids()
-    print(f"   Product ID: {product_id[:20]}..." if product_id else "   No products found")
-    print(f"   User ID: {user_id[:20]}..." if user_id else "   No users found")
+    print("=" * 70)
+    print("FINFIND API COMPREHENSIVE TEST")
+    print("=" * 70)
+    print(f"Base URL: {BASE_URL}")
+    print(f"Test User ID: {USER_ID}")
+    print(f"Test Product ID: {PRODUCT_ID}")
+    print("=" * 70)
     
-    # ============================================
-    # HEALTH & ROOT
-    # ============================================
-    print("\n📍 HEALTH & ROOT")
-    print("-" * 40)
+    # 1. Health endpoints
+    print("\n1. HEALTH ENDPOINTS")
+    results.append(test_endpoint("Health Check", "GET", f"{BASE_URL.replace('/api/v1', '')}/health"))
+    results.append(test_endpoint("Root Endpoint", "GET", BASE_URL.replace("/api/v1", "/")))
     
-    ok, _ = test("Health Check", "GET", f"{BASE}/health")
-    results["passed" if ok else "failed"] += 1
+    # 2. Search endpoints
+    print("\n2. SEARCH ENDPOINTS")
+    results.append(test_endpoint("Search Products", "GET", f"{BASE_URL}/search/products?q=laptop"))
+    results.append(test_endpoint("Search Suggestions", "GET", f"{BASE_URL}/search/suggest?q=app"))
+    results.append(test_endpoint("Get Categories", "GET", f"{BASE_URL}/search/categories"))
+    results.append(test_endpoint("Get Brands", "GET", f"{BASE_URL}/search/brands"))
     
-    ok, _ = test("Root Endpoint", "GET", f"{BASE}/")
-    results["passed" if ok else "failed"] += 1
+    # 3. User endpoints
+    print("\n3. USER ENDPOINTS")
+    results.append(test_endpoint("Get User Profile", "GET", f"{BASE_URL}/users/{USER_ID}/profile"))
+    results.append(test_endpoint("Update User Profile", "PUT", f"{BASE_URL}/users/{USER_ID}/profile", 
+        json={"preferences": {"favorite_categories": ["Electronics", "Fashion"]}}))
     
-    # ============================================
-    # SEARCH APIs
-    # ============================================
-    print("\n🔍 SEARCH APIs")
-    print("-" * 40)
+    # 4. Product endpoints
+    print("\n4. PRODUCT ENDPOINTS")
+    results.append(test_endpoint("Get Product", "GET", f"{BASE_URL}/products/{PRODUCT_ID}"))
+    results.append(test_endpoint("Get Product Reviews", "GET", f"{BASE_URL}/products/{PRODUCT_ID}/reviews"))
+    results.append(test_endpoint("Get Similar Products", "GET", f"{BASE_URL}/products/{PRODUCT_ID}/similar"))
     
-    ok, _ = test("Search Products", "GET", f"{BASE}/api/v1/search/products", 
-                 params={"q": "laptop", "limit": 5})
-    results["passed" if ok else "failed"] += 1
+    # 5. Recommendations endpoints
+    print("\n5. RECOMMENDATION ENDPOINTS")
+    ok, msg, data = test_endpoint("Get Recommendations", "GET", f"{BASE_URL}/recommendations/{USER_ID}")
+    results.append((ok, msg, data))
     
-    ok, _ = test("Search Suggestions", "GET", f"{BASE}/api/v1/search/suggest", 
-                 params={"q": "head"})
-    results["passed" if ok else "failed"] += 1
+    # Get a recommended product ID for further testing
+    rec_product_id = None
+    if ok and data and data.get("recommendations"):
+        rec_product_id = data["recommendations"][0]["id"]
+        print(f"   Using recommended product: {rec_product_id}")
     
-    ok, _ = test("Get Categories", "GET", f"{BASE}/api/v1/search/categories")
-    results["passed" if ok else "failed"] += 1
-    
-    ok, _ = test("Get Brands", "GET", f"{BASE}/api/v1/search/brands")
-    results["passed" if ok else "failed"] += 1
-    
-    # ============================================
-    # AGENTS APIs
-    # ============================================
-    print("\n🤖 AGENTS APIs")
-    print("-" * 40)
-    
-    ok, _ = test("List Agents", "GET", f"{BASE}/api/v1/agents/list")
-    results["passed" if ok else "failed"] += 1
-    
-    ok, _ = test("Agents Health", "GET", f"{BASE}/api/v1/agents/health")
-    results["passed" if ok else "failed"] += 1
-    
-    # Agent Query (orchestrator) - this works based on previous test
-    ok, _ = test("Agent Query (Orchestrator)", "POST", f"{BASE}/api/v1/agents/query",
-                 data={
-                     "query": "I need a good laptop for programming under $800"
-                 })
-    results["passed" if ok else "failed"] += 1
-    
-    # ============================================
-    # USERS APIs
-    # ============================================
-    print("\n👤 USERS APIs")
-    print("-" * 40)
-    
-    if user_id:
-        ok, _ = test("Get User Profile", "GET", f"{BASE}/api/v1/users/{user_id}/profile")
-        results["passed" if ok else "failed"] += 1
+    if rec_product_id:
+        results.append(test_endpoint("Explain Recommendation", "POST", f"{BASE_URL}/recommendations/explain",
+            json={"user_id": USER_ID, "product_id": rec_product_id}))
+        results.append(test_endpoint("Get Alternatives", "GET", f"{BASE_URL}/recommendations/alternatives/{rec_product_id}"))
     else:
-        print("✗ Get User Profile: Skipped (no users)")
-        results["failed"] += 1
+        results.append((False, "✗ Explain Recommendation: Skipped (no product)", None))
+        results.append((False, "✗ Get Alternatives: Skipped (no product)", None))
     
-    # ============================================
-    # PRODUCTS APIs
-    # ============================================
-    print("\n📦 PRODUCTS APIs")
-    print("-" * 40)
+    # 6. Agent endpoints
+    print("\n6. AGENT ENDPOINTS")
+    results.append(test_endpoint("List Agents", "GET", f"{BASE_URL}/agents/list"))
+    results.append(test_endpoint("Agent Health", "GET", f"{BASE_URL}/agents/health"))
     
-    if product_id:
-        ok, _ = test("Get Product by ID", "GET", f"{BASE}/api/v1/products/{product_id}")
-        results["passed" if ok else "failed"] += 1
+    # Test agent query
+    results.append(test_endpoint("Agent Query", "POST", f"{BASE_URL}/agents/query",
+        json={"query": "Find affordable laptops", "user_id": USER_ID}))
+    
+    # Test session management
+    ok, msg, session_data = test_endpoint("Create Session", "POST", f"{BASE_URL}/agents/session",
+        json={"user_id": USER_ID})
+    results.append((ok, msg, session_data))
+    
+    if ok and session_data and session_data.get("sessionId"):
+        session_id = session_data["sessionId"]
+        results.append(test_endpoint("Get Session", "GET", f"{BASE_URL}/agents/session/{session_id}"))
     else:
-        print("✗ Get Product by ID: Skipped (no products)")
-        results["failed"] += 1
+        results.append((False, "✗ Get Session: Skipped (no session)", None))
     
-    # ============================================
-    # RECOMMENDATIONS APIs
-    # ============================================
-    print("\n⭐ RECOMMENDATIONS APIs")
-    print("-" * 40)
+    # 7. Workflow endpoints
+    print("\n7. WORKFLOW ENDPOINTS")
+    results.append(test_endpoint("List Workflows", "GET", f"{BASE_URL}/workflows"))
     
-    if user_id:
-        ok, _ = test("Get Recommendations", "GET", f"{BASE}/api/v1/recommendations/{user_id}",
-                     params={"limit": 5})
-        results["passed" if ok else "failed"] += 1
-    else:
-        print("✗ Get Recommendations: Skipped (no users)")
-        results["failed"] += 1
+    # 8. Learning endpoints
+    print("\n8. LEARNING ENDPOINTS")
+    results.append(test_endpoint("Track Click", "POST", f"{BASE_URL}/learning/track/click",
+        json={"product_id": PRODUCT_ID, "position": 1, "items_shown": [PRODUCT_ID]}))
+    results.append(test_endpoint("Learning Dashboard", "GET", f"{BASE_URL}/learning/dashboard"))
+    results.append(test_endpoint("Learning Status", "GET", f"{BASE_URL}/learning/status"))
     
-    # ============================================
-    # SUMMARY
-    # ============================================
-    print("\n" + "=" * 65)
-    print("                    TEST SUMMARY")
-    print("=" * 65)
-    total = results["passed"] + results["failed"]
-    print(f"\n   ✓ Passed: {results['passed']}/{total}")
-    print(f"   ✗ Failed: {results['failed']}/{total}")
-    pct = (results["passed"] / total * 100) if total > 0 else 0
-    print(f"\n   Success Rate: {pct:.1f}%")
-    print("=" * 65 + "\n")
-
+    # Print results
+    print("\n" + "=" * 70)
+    print("RESULTS SUMMARY")
+    print("=" * 70)
+    
+    passed = sum(1 for success, _, _ in results if success)
+    total = len(results)
+    
+    for success, message, _ in results:
+        print(message)
+    
+    print(f"\n✓ Passed: {passed}/{total}")
+    print(f"✗ Failed: {total - passed}/{total}")
+    print(f"Success Rate: {(passed/total)*100:.1f}%")
+    print("=" * 70)
+    
+    return passed == total
 
 if __name__ == "__main__":
-    main()
+    success = run_tests()
+    exit(0 if success else 1)
