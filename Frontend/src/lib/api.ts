@@ -59,6 +59,48 @@ apiClient.interceptors.response.use(
 );
 
 // ============================================================================
+// Utility Functions
+// ============================================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformProduct(product: any): ProductSearchResult {
+  return {
+    id: product.id,
+    name: product.name || product.title,
+    description: product.description,
+    price: product.price,
+    originalPrice: product.original_price || product.originalPrice,
+    category: product.category,
+    subcategory: product.subcategory,
+    brand: product.brand,
+    rating: product.rating || product.rating_avg,
+    reviewCount: product.review_count || product.reviewCount,
+    imageUrl: product.image_url || product.imageUrl,
+    inStock: product.in_stock ?? product.inStock ?? true,
+    relevanceScore: product.relevance_score || product.relevanceScore || 0,
+    matchExplanation: product.match_reason || product.matchExplanation,
+    matchScore: product.match_score || product.matchScore,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformSearchResponse(data: any): SearchResponse {
+  return {
+    success: data.success,
+    query: data.query,
+    interpretedQuery: data.interpreted_query || data.interpretedQuery,
+    products: (data.products || []).map(transformProduct),
+    totalResults: data.total_results ?? data.totalResults ?? 0,
+    page: data.page ?? 1,
+    pageSize: data.page_size ?? data.pageSize ?? 20,
+    totalPages: data.total_pages ?? data.totalPages ?? 1,
+    filtersApplied: data.filters_applied || data.filtersApplied || {},
+    searchTimeMs: data.search_time_ms ?? data.searchTimeMs ?? 0,
+    requestId: data.request_id || data.requestId || '',
+  };
+}
+
+// ============================================================================
 // Search API
 // ============================================================================
 
@@ -67,7 +109,7 @@ export const searchApi = {
    * Search products with text query
    */
   async searchProducts(request: SearchRequest): Promise<SearchResponse> {
-    const response = await apiClient.post<SearchResponse>("/search/products", {
+    const response = await apiClient.post("/search/products", {
       query: request.query,
       filters: request.filters,
       limit: request.pageSize || 20,
@@ -75,7 +117,7 @@ export const searchApi = {
       use_mmr: request.useMmr ?? true,
       diversity: request.diversity ?? 0.3,
     });
-    return response.data;
+    return transformSearchResponse(response.data);
   },
 
   /**
@@ -88,10 +130,10 @@ export const searchApi = {
       formData.append("filters", JSON.stringify(filters));
     }
 
-    const response = await apiClient.post<SearchResponse>("/multimodal/voice/search", formData, {
+    const response = await apiClient.post("/multimodal/voice/search", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return response.data;
+    return transformSearchResponse(response.data);
   },
 
   /**
@@ -104,10 +146,10 @@ export const searchApi = {
       formData.append("filters", JSON.stringify(filters));
     }
 
-    const response = await apiClient.post<SearchResponse>("/multimodal/image/search", formData, {
+    const response = await apiClient.post("/multimodal/image/search", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return response.data;
+    return transformSearchResponse(response.data);
   },
 
   /**
@@ -125,13 +167,43 @@ export const searchApi = {
 // Product API
 // ============================================================================
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformFullProduct(product: any): Product {
+  return {
+    id: product.id,
+    name: product.name || product.title,
+    description: product.description || '',
+    price: product.price,
+    originalPrice: product.original_price || product.originalPrice,
+    currency: product.currency || 'USD',
+    category: product.category,
+    subcategory: product.subcategory,
+    brand: product.brand || '',
+    rating: product.rating || product.rating_avg || 0,
+    reviewCount: product.review_count || product.reviewCount || 0,
+    imageUrl: product.image_url || product.imageUrl || '',
+    imageUrls: product.image_urls || product.imageUrls || [],
+    inStock: product.in_stock ?? product.inStock ?? true,
+    stockQuantity: product.stock_quantity || product.stockQuantity,
+    paymentOptions: product.payment_options || product.paymentOptions || [],
+    tags: product.tags || [],
+    attributes: product.attributes || {},
+    createdAt: product.created_at || product.createdAt || new Date().toISOString(),
+    updatedAt: product.updated_at || product.updatedAt,
+  };
+}
+
 export const productApi = {
   /**
    * Get product details
    */
   async getProduct(productId: string): Promise<{ product: Product; similarProducts: ProductSearchResult[] }> {
     const response = await apiClient.get(`/products/${productId}`);
-    return response.data;
+    const data = response.data;
+    return {
+      product: transformFullProduct(data.product || data),
+      similarProducts: (data.similar_products || data.similarProducts || []).map(transformProduct),
+    };
   },
 
   /**
@@ -159,7 +231,8 @@ export const productApi = {
     const response = await apiClient.get(`/products/${productId}/similar`, {
       params: { limit },
     });
-    return response.data;
+    const products = response.data.products || response.data;
+    return (Array.isArray(products) ? products : []).map(transformProduct);
   },
 
   /**
@@ -268,7 +341,7 @@ export const recommendationsApi = {
       diversity?: number;
     }
   ): Promise<RecommendationResponse> {
-    const response = await apiClient.get<RecommendationResponse>(
+    const response = await apiClient.get(
       `/recommendations/${userId}`,
       {
         params: {
@@ -279,7 +352,11 @@ export const recommendationsApi = {
         },
       }
     );
-    return response.data;
+    const data = response.data;
+    return {
+      ...data,
+      recommendations: (data.recommendations || []).map(transformProduct),
+    };
   },
 
   /**
@@ -304,11 +381,15 @@ export const recommendationsApi = {
     criteria: "cheaper" | "better_rated" | "similar" | "balanced" = "balanced",
     limit: number = 5
   ): Promise<AlternativesResponse> {
-    const response = await apiClient.get<AlternativesResponse>(
+    const response = await apiClient.get(
       `/recommendations/alternatives/${productId}`,
       { params: { criteria, limit } }
     );
-    return response.data;
+    const data = response.data;
+    return {
+      ...data,
+      alternatives: (data.alternatives || []).map(transformProduct),
+    };
   },
 };
 
@@ -329,13 +410,17 @@ export const chatApi = {
    * Send chat message
    */
   async sendMessage(request: ChatRequest): Promise<ChatResponse> {
-    const response = await apiClient.post<ChatResponse>("/agents/query", {
+    const response = await apiClient.post("/agents/query", {
       query: request.message,
       session_id: request.sessionId,
       context: request.context,
       include_explanations: request.includeProducts ?? true,
     });
-    return response.data;
+    const data = response.data;
+    return {
+      ...data,
+      products: (data.products || []).map(transformProduct),
+    };
   },
 
   /**

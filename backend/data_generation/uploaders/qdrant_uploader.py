@@ -316,6 +316,19 @@ class QdrantUploader:
         """
         from qdrant_client.models import PointStruct
         
+        # Check if item is already in Qdrant format (has 'vector' and 'payload' keys)
+        if 'vector' in item and 'payload' in item:
+            # Already prepared - use as-is but ensure proper ID format
+            point_id = item.get('id')
+            if isinstance(point_id, str) and not self._is_valid_uuid(point_id):
+                point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, point_id))
+            
+            return PointStruct(
+                id=point_id,
+                vector=item['vector'],
+                payload=item['payload']
+            )
+        
         # Extract or generate ID
         point_id = item.get('id') or item.get('review_id') or item.get('user_id')
         if not point_id:
@@ -328,15 +341,16 @@ class QdrantUploader:
                 # Create deterministic UUID from string ID
                 point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, point_id))
         
-        # Extract vector
-        vector = item.get('embedding') or item.get('query_embedding') or []
+        # Extract vector - check multiple possible keys
+        vector = item.get('vector') or item.get('embedding') or item.get('query_embedding') or []
         
         # If no vector, create a zero vector (will be updated later)
         if not vector or len(vector) == 0:
             vector = [0.0] * self.config.text_embedding_dim
         
-        # Prepare payload (everything except embedding)
-        payload = {k: v for k, v in item.items() if k not in ['embedding', 'query_embedding']}
+        # Prepare payload (everything except embedding/vector keys)
+        exclude_keys = ['embedding', 'query_embedding', 'vector']
+        payload = {k: v for k, v in item.items() if k not in exclude_keys}
         
         # Store original ID in payload for reference
         original_id = item.get('id') or item.get('review_id') or item.get('user_id')
@@ -348,6 +362,14 @@ class QdrantUploader:
             vector=vector,
             payload=payload
         )
+    
+    def _is_valid_uuid(self, val: str) -> bool:
+        """Check if string is a valid UUID."""
+        try:
+            uuid.UUID(str(val))
+            return True
+        except (ValueError, AttributeError):
+            return False
     
     def upload_batch(
         self, 
