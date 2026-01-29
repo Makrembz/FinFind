@@ -186,14 +186,14 @@ Examples:
             results = run_upload(input_dir, args.recreate)
             
             # Check results
-            upload_success = all(r['success'] for r in results.values())
-            total_points = sum(r.get('points_uploaded', 0) for r in results.values())
+            upload_success = all(r.get('status') in ['success', 'partial'] for r in results.values())
+            total_points = sum(r.get('successful', 0) for r in results.values())
             
             print(f"\nUpload complete: {total_points} total points")
             
             for collection, result in results.items():
-                status = "✓" if result['success'] else "✗"
-                count = result.get('points_uploaded', 0)
+                status = "✓" if result.get('status') == 'success' else "✗"
+                count = result.get('successful', 0)
                 print(f"  {status} {collection}: {count} points")
             
             if not upload_success:
