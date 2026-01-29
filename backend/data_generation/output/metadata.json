@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-26T13:48:02.471092",
+  "generated_at": "2026-01-29T08:02:39.605509",
   "config": {
     "num_products": 500,
     "num_reviews": 1200,
@@ -10,107 +10,144 @@
     "embedding_model": "sentence-transformers/all-MiniLM-L6-v2"
   },
   "products": {
-    "count": 500,
+    "count": 134,
     "category_distribution": {
-      "Books & Media": 59,
-      "Electronics": 119,
-      "Fashion": 92,
-      "Home & Kitchen": 72,
-      "Sports & Fitness": 82,
-      "Beauty & Personal Care": 76
+      "Electronics": 48,
+      "Fashion": 25,
+      "Home & Kitchen": 21,
+      "Books & Media": 9,
+      "Sports & Fitness": 15,
+      "Beauty & Personal Care": 16
     },
     "price_stats": {
-      "min": 5.99,
-      "max": 2900.0,
-      "avg": 165.38
+      "min": 10.0,
+      "max": 2799.99,
+      "avg": 473.61
     }
   },
   "reviews": {
     "total_reviews": 1200,
-    "average_rating": 3.9,
+    "average_rating": 3.92,
     "rating_distribution": {
       "1": 37,
-      "2": 93,
-      "3": 237,
-      "4": 420,
-      "5": 413
+      "2": 87,
+      "3": 230,
+      "4": 428,
+      "5": 418
     },
     "sentiment_distribution": {
-      "positive": 846,
-      "neutral": 224,
-      "negative": 130
+      "positive": 856,
+      "neutral": 220,
+      "negative": 124
     },
-    "verified_purchase_count": 967,
-    "verified_purchase_pct": 80.6,
-    "unique_products": 277,
+    "verified_purchase_count": 966,
+    "verified_purchase_pct": 80.5,
+    "unique_products": 110,
     "unique_users": 100
   },
-  "users": {},
+  "users": {
+    "total_users": 100,
+    "personas": {
+      "budget_conscious": 5,
+      "young_professional": 25,
+      "affluent": 12,
+      "student": 20,
+      "senior": 10,
+      "family": 25,
+      "luxury_shopper": 3
+    },
+    "age_ranges": {
+      "45-54": 11,
+      "35-44": 25,
+      "55-64": 6,
+      "18-24": 12,
+      "65+": 8,
+      "25-34": 38
+    },
+    "payment_methods": {
+      "debit_card": 74,
+      "cash": 23,
+      "installments": 8,
+      "credit_card": 70,
+      "bnpl": 13,
+      "bank_transfer": 7
+    },
+    "financial_metrics": {
+      "avg_budget_min": 331.22,
+      "avg_budget_max": 1527.48,
+      "avg_affordability": 0.531
+    },
+    "purchase_history": {
+      "total_purchases": 1170,
+      "avg_purchases_per_user": 11.7,
+      "total_ltv": 324220.25
+    }
+  },
   "interactions": {
-    "total_interactions": 1301,
+    "total_interactions": 1224,
     "interaction_types": {
-      "search": 488,
-      "view": 544,
-      "add_to_cart": 144,
-      "purchase": 63,
+      "search": 463,
+      "view": 512,
+      "add_to_cart": 128,
+      "purchase": 58,
       "wishlist": 43,
-      "remove_from_cart": 19
+      "remove_from_cart": 20
     },
     "device_types": {
       "mobile": 583,
-      "desktop": 550,
-      "tablet": 168
+      "desktop": 486,
+      "tablet": 155
     },
     "unique_users": 100,
     "unique_sessions": 300,
-    "conversions": 384,
+    "conversions": 346,
     "search_queries": [
-      "budget gaming",
-      "Books & Media Public Domain",
-      "something for Valentine's Day",
-      "Sports & Fitness Russell Athletic",
-      "men's clothing with noise canceling",
-      "help me find shoes",
-      "new Schwinn fitness accessorie",
-      "HP H818",
-      "large hair care",
-      "luxury personal hygiene",
-      "Cetaphil C265",
-      "Utopia U411",
-      "best value hair care",
-      "Ralph Lauren R216",
-      "gift for best friend",
-      "sportswear with USB-C",
-      "need a new gadget",
-      "what's a good hair care",
-      "Fashion",
-      "what's a good men's clothing"
+      "camping & hiking with USB-C",
+      "looking for headphones",
+      "outdoor recreation with USB-C",
+      "Target Essentials T887",
+      "something for Mother's Day",
+      "tv & home theater with noise canceling",
+      "medium non-fiction",
+      "best value personal hygiene",
+      "Home & Kitchen Utopia",
+      "help me find speaker",
+      "camping & hiking gray",
+      "bags & accessorie black",
+      "best men's grooming under $1319",
+      "hair care blue",
+      "best headphone under $235",
+      "best value team sport",
+      "Nail Care",
+      "what's a good bedding",
+      "Wiley fiction",
+      "affordable bedding"
     ],
-    "avg_interactions_per_session": 4.34
+    "avg_interactions_per_session": 4.08
   },
   "consistency": {
     "products": {
-      "count": 500,
+      "count": 134,
       "categories": 6,
-      "brands": 106,
+      "brands": 105,
       "price_range": {
-        "min": 5.99,
-        "max": 2900.0
+        "min": 10.0,
+        "max": 2799.99
       }
     },
     "users": {
       "count": 100,
       "budget_range": {
-        "min": 40.93,
-        "max": 11804.13
+        "min": 41.68,
+        "max": 11117.73
       }
     },
     "reviews": {
       "count": 1200,
-      "products_with_reviews": 277
+      "products_with_reviews": 110
     },
     "interactions": {
-      "count": 1301
+      "count": 1224
     }
   }
 }
