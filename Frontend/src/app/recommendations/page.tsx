@@ -9,13 +9,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCard } from "@/components/product/ProductCard";
 import { ExplanationTooltip } from "@/components/product/ExplanationTooltip";
-import { useRecommendations, useTrendingProducts, useUserBrowsingHistory } from "@/hooks/useApi";
+import { useRecommendations, useTrendingProducts, useUserBrowsingHistory, useUser } from "@/hooks/useApi";
 import type { ProductSearchResult } from "@/types";
+
+// Demo user ID - in production this would come from auth
+const DEMO_USER_ID = "013c3cb2-482a-55b0-9559-6688c3b78313";
 
 export default function RecommendationsPage() {
   // Use a real user ID from Qdrant (in production, this would come from auth context)
-  const userId = "013c3cb2-482a-55b0-9559-6688c3b78313";
-  const monthlyBudget = 1000;
+  const userId = typeof window !== 'undefined' 
+    ? localStorage.getItem("userId") || DEMO_USER_ID 
+    : DEMO_USER_ID;
+  
+  // Get user profile for budget
+  const { data: userData } = useUser(userId);
+  const monthlyBudget = userData?.profile?.financialProfile?.monthlyBudget || 1000;
 
   const {
     data: recommendations,
