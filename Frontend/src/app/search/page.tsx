@@ -20,7 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useSearch, useImageSearch, useUser, useCategories, useBrands } from "@/hooks/useApi";
+import { useSearch, useImageSearch, useUser, useCategories, useBrands, useLogProductInteraction } from "@/hooks/useApi";
 import type { SearchFilters, SortOrder } from "@/types";
 
 // Demo user ID - in production this would come from auth
@@ -48,6 +48,9 @@ function SearchPageContent() {
   
   // Use user's monthly budget from profile, fallback to 1000
   const monthlyBudget = userData?.profile?.financialProfile?.monthlyBudget || 1000;
+  
+  // Track interactions for learning
+  const logInteraction = useLogProductInteraction();
 
   // Fetch dynamic categories and brands
   const { data: categoriesData } = useCategories();
@@ -170,6 +173,12 @@ function SearchPageContent() {
       localStorage.setItem("cart", JSON.stringify(cart));
       // Dispatch event to update header count
       window.dispatchEvent(new Event("cartUpdated"));
+      // Log interaction for learning
+      logInteraction.mutate({
+        productId,
+        interactionType: "add_to_cart",
+        metadata: { user_id: DEMO_USER_ID, source: "search" }
+      });
     }
   };
 
@@ -180,7 +189,22 @@ function SearchPageContent() {
       localStorage.setItem("wishlist", JSON.stringify(wishlist));
       // Dispatch event to update header count
       window.dispatchEvent(new Event("wishlistUpdated"));
+      // Log interaction for learning
+      logInteraction.mutate({
+        productId,
+        interactionType: "wishlist",
+        metadata: { user_id: DEMO_USER_ID, source: "search" }
+      });
     }
+  };
+
+  // Handle product click - log interaction
+  const handleProductClick = (productId: string) => {
+    logInteraction.mutate({
+      productId,
+      interactionType: "click",
+      metadata: { user_id: DEMO_USER_ID, source: "search", query }
+    });
   };
 
   return (
@@ -428,6 +452,7 @@ function SearchPageContent() {
                   monthlyBudget={monthlyBudget}
                   onAddToCart={() => handleAddToCart(product.id)}
                   onAddToWishlist={() => handleAddToWishlist(product.id)}
+                  onClick={() => handleProductClick(product.id)}
                   className={viewMode === "list" ? "flex-row" : undefined}
                 />
               ))}

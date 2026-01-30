@@ -29,6 +29,7 @@ interface ProductCardProps {
   onAddToCart?: () => void;
   onAddToWishlist?: () => void;
   onShowAlternatives?: () => void;
+  onClick?: () => void;
   className?: string;
 }
 
@@ -39,6 +40,7 @@ export function ProductCard({
   onAddToCart,
   onAddToWishlist,
   onShowAlternatives,
+  onClick,
   className,
 }: ProductCardProps) {
   const [shareSuccess, setShareSuccess] = React.useState(false);
@@ -104,7 +106,7 @@ export function ProductCard({
       )}
     >
       {/* Image */}
-      <Link href={`/product/${product.id}`} className="relative aspect-square">
+      <Link href={`/product/${product.id}`} className="relative aspect-square" onClick={onClick}>
         <div className="relative h-full w-full bg-muted">
           {product.imageUrl ? (
             <Image

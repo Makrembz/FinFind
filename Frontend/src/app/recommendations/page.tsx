@@ -60,6 +60,7 @@ export default function RecommendationsPage() {
     if (!cart.includes(productId)) {
       cart.push(productId);
       localStorage.setItem("cart", JSON.stringify(cart));
+      window.dispatchEvent(new Event("cartUpdated"));
     }
   };
 
@@ -68,6 +69,7 @@ export default function RecommendationsPage() {
     if (!wishlist.includes(productId)) {
       wishlist.push(productId);
       localStorage.setItem("wishlist", JSON.stringify(wishlist));
+      window.dispatchEvent(new Event("wishlistUpdated"));
     }
   };
 

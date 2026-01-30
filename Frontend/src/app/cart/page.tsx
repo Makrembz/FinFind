@@ -16,8 +16,16 @@ interface CartItemProps {
 }
 
 function CartItem({ productId, onRemove }: CartItemProps) {
-  const { data, isLoading } = useProduct(productId);
+  const { data, isLoading, isError } = useProduct(productId);
   const product = data?.product;
+
+  // Auto-remove invalid products from cart
+  React.useEffect(() => {
+    if (!isLoading && (isError || !product)) {
+      // Product doesn't exist, remove from cart
+      onRemove(productId);
+    }
+  }, [isLoading, isError, product, productId, onRemove]);
 
   if (isLoading) {
     return (

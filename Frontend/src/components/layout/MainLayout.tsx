@@ -19,13 +19,31 @@ export function MainLayout({
   const [isDarkMode, setIsDarkMode] = React.useState(false);
   const [cartCount, setCartCount] = React.useState(0);
   const [wishlistCount, setWishlistCount] = React.useState(0);
+  const [isMounted, setIsMounted] = React.useState(false);
 
   // Function to update counts from localStorage
   const updateCounts = React.useCallback(() => {
-    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const wishlist = JSON.parse(localStorage.getItem("wishlist") || "[]");
-    setCartCount(cart.length);
-    setWishlistCount(wishlist.length);
+    if (typeof window === 'undefined') return;
+    try {
+      const cartData = localStorage.getItem("cart");
+      const wishlistData = localStorage.getItem("wishlist");
+      const cart = cartData ? JSON.parse(cartData) : [];
+      const wishlist = wishlistData ? JSON.parse(wishlistData) : [];
+      // Ensure we count unique items only
+      const uniqueCart = [...new Set(cart)];
+      const uniqueWishlist = [...new Set(wishlist)];
+      setCartCount(uniqueCart.length);
+      setWishlistCount(uniqueWishlist.length);
+    } catch (e) {
+      console.error('Error reading cart/wishlist from localStorage:', e);
+      setCartCount(0);
+      setWishlistCount(0);
+    }
+  }, []);
+
+  // Set mounted state on client
+  React.useEffect(() => {
+    setIsMounted(true);
   }, []);
 
   // Initialize dark mode from localStorage or system preference
@@ -82,8 +100,8 @@ export function MainLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <Header
-        cartItemCount={cartCount}
-        wishlistCount={wishlistCount}
+        cartItemCount={isMounted ? cartCount : 0}
+        wishlistCount={isMounted ? wishlistCount : 0}
         isLoggedIn={!!userId}
         onToggleTheme={toggleTheme}
         isDarkMode={isDarkMode}

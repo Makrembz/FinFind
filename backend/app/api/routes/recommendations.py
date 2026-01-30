@@ -285,14 +285,57 @@ async def get_recommendations(
         )
         
         viewed_product_ids = set()
+        positive_product_ids = []  # Products user showed interest in (for collaborative filtering)
+        negative_product_ids = []  # Products user disliked
+        
+        # Helper to check if ID looks like a valid UUID (not old prod_xxx format)
+        import re
+        uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
+        
         for i in past_interactions:
             outer_interaction = i.get("payload", {})
             inner_interaction = outer_interaction.get("payload", outer_interaction)
-            if inner_interaction.get("product_id"):
-                viewed_product_ids.add(inner_interaction.get("product_id"))
+            product_id = inner_interaction.get("product_id")
+            interaction_type = inner_interaction.get("interaction_type", "")
+            
+            if product_id:
+                viewed_product_ids.add(product_id)
+                
+                # Only use valid UUID product IDs for collaborative filtering
+                is_valid_uuid = uuid_pattern.match(product_id) is not None
+                
+                # Positive signals for collaborative filtering
+                if interaction_type in ["purchase", "add_to_cart", "wishlist", "bookmark"]:
+                    if is_valid_uuid and product_id not in positive_product_ids:
+                        positive_product_ids.append(product_id)
+                # Negative signals
+                elif interaction_type in ["dislike", "remove_from_cart"]:
+                    if is_valid_uuid and product_id not in negative_product_ids:
+                        negative_product_ids.append(product_id)
+        
+        logger.info(f"User {user_id} has {len(positive_product_ids)} positive interactions for collaborative filtering")
+        
+        # Use collaborative filtering if user has positive interactions
+        collaborative_results = []
+        if positive_product_ids:
+            try:
+                # Use Qdrant's recommend API for collaborative filtering
+                # This finds products similar to what the user liked
+                collaborative_results = qdrant.recommend(
+                    collection="products",
+                    positive_ids=positive_product_ids[:10],  # Use top 10 positive signals
+                    negative_ids=negative_product_ids[:5] if negative_product_ids else None,
+                    limit=limit * 2,
+                    filters=filters if filters else None
+                )
+                logger.info(f"Collaborative filtering found {len(collaborative_results)} products for user {user_id}")
+            except Exception as cf_error:
+                logger.warning(f"Collaborative filtering failed, falling back to vector search: {cf_error}")
+                collaborative_results = []
         
         # Search for recommendations using MMR for diversity (sync method)
-        results = qdrant.mmr_search(
+        # This is content-based filtering using user profile vector
+        vector_results = qdrant.mmr_search(
             collection="products",
             query_vector=search_vector,
             limit=limit + len(viewed_product_ids),  # Get extra to filter
@@ -301,11 +344,31 @@ async def get_recommendations(
             vector_name="text"  # Use the "text" named vector for semantic search
         )
         
+        # Merge results: prioritize collaborative filtering, fill with content-based
+        seen_ids = set()
+        merged_results = []
+        
+        # First add collaborative filtering results (user behavior based)
+        for result in collaborative_results:
+            product_id = result.get("id", "")
+            if product_id not in viewed_product_ids and product_id not in seen_ids:
+                result["recommendation_source"] = "collaborative"
+                merged_results.append(result)
+                seen_ids.add(product_id)
+        
+        # Then add content-based results (profile/vector based)
+        for result in vector_results:
+            product_id = result.get("id", "")
+            if product_id not in viewed_product_ids and product_id not in seen_ids:
+                result["recommendation_source"] = "content_based"
+                merged_results.append(result)
+                seen_ids.add(product_id)
+        
         # Format recommendations
         recommendations = []
         reasons_map = {}
         
-        for result in results:
+        for result in merged_results[:limit]:
             product_id = result.get("id", "")
             
             # Skip already viewed products
@@ -339,6 +402,11 @@ async def get_recommendations(
             # Generate recommendation reason
             if include_reasons:
                 reasons = []
+                recommendation_source = result.get("recommendation_source", "content_based")
+                
+                # Add collaborative filtering reason if applicable
+                if recommendation_source == "collaborative":
+                    reasons.append("🎯 Based on your shopping behavior")
                 
                 if payload.get("category") in preferred_categories:
                     reasons.append(f"Matches your interest in {payload.get('category')}")
@@ -359,6 +427,11 @@ async def get_recommendations(
                     reasons.append("Recommended based on your profile")
                 
                 reasons_map[product_id] = reasons
+        
+        # Add explanation about method used
+        method_explanation = "Personalized using your preferences"
+        if positive_product_ids:
+            method_explanation = f"Collaborative filtering based on {len(positive_product_ids)} interactions + profile preferences"
         
         return RecommendationResponse(
             success=True,
