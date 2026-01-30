@@ -63,6 +63,22 @@ export function useSearchSuggestions(query: string) {
   });
 }
 
+export function useCategories() {
+  return useQuery({
+    queryKey: ["categories"],
+    queryFn: () => searchApi.getCategories(),
+    staleTime: 1000 * 60 * 30, // 30 minutes - categories rarely change
+  });
+}
+
+export function useBrands(category?: string) {
+  return useQuery({
+    queryKey: ["brands", category],
+    queryFn: () => searchApi.getBrands(category),
+    staleTime: 1000 * 60 * 30, // 30 minutes
+  });
+}
+
 export function useVoiceSearch() {
   const queryClient = useQueryClient();
 
@@ -309,13 +325,10 @@ export function useRelatedProducts(productId: string) {
   });
 }
 
-export function useTrendingProducts() {
+export function useTrendingProducts(category?: string) {
   return useQuery({
-    queryKey: ["trending"],
-    queryFn: async () => {
-      // Placeholder - in production this would call the API
-      return [];
-    },
+    queryKey: ["trending", category],
+    queryFn: () => recommendationsApi.getTrendingProducts({ category, limit: 12 }),
     staleTime: 1000 * 60 * 5,
   });
 }

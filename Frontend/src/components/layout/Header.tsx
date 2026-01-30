@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Search,
   User,
@@ -13,6 +13,8 @@ import {
   Sun,
   Moon,
   Sparkles,
+  LogOut,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +24,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -45,7 +54,26 @@ export function Header({
   isDarkMode = false,
 }: HeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+
+  const handleLogout = () => {
+    // Clear all user data from localStorage
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userProfile");
+    localStorage.removeItem("userCategories");
+    localStorage.removeItem("userBrands");
+    localStorage.removeItem("onboardingComplete");
+    
+    // Dispatch event to notify other components
+    window.dispatchEvent(new Event("profileUpdated"));
+    
+    // Redirect to home page
+    router.push("/");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -154,20 +182,29 @@ export function Header({
 
           {/* Profile/Login */}
           {isLoggedIn ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/profile">
-                    <Button variant="ghost" size="icon">
-                      <User className="h-5 w-5" />
-                    </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <User className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+                    <Settings className="h-4 w-4" />
+                    Profile
                   </Link>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Profile</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Link href="/login">
               <Button variant="default" size="sm">
@@ -257,6 +294,19 @@ export function Header({
               <User className="h-5 w-5" />
               {isLoggedIn ? "Profile" : "Sign In"}
             </Link>
+
+            {isLoggedIn && (
+              <button
+                className="flex items-center gap-3 rounded-lg p-3 text-sm font-medium hover:bg-muted text-destructive"
+                onClick={() => {
+                  handleLogout();
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                <LogOut className="h-5 w-5" />
+                Logout
+              </button>
+            )}
 
             <button
               className="flex items-center gap-3 rounded-lg p-3 text-sm font-medium hover:bg-muted"

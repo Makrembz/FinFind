@@ -9,6 +9,7 @@ import { VoiceRecorder } from "@/components/search/VoiceRecorder";
 import { ImageUploader } from "@/components/search/ImageUploader";
 import { FilterPanel } from "@/components/search/FilterPanel";
 import { ProductCard } from "@/components/product/ProductCard";
+import { RecentlyViewed } from "@/components/product/RecentlyViewed";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,7 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useSearch, useImageSearch, useUser } from "@/hooks/useApi";
+import { useSearch, useImageSearch, useUser, useCategories, useBrands, useLogProductInteraction } from "@/hooks/useApi";
 import type { SearchFilters, SortOrder } from "@/types";
 
 // Demo user ID - in production this would come from auth
@@ -47,6 +48,15 @@ function SearchPageContent() {
   
   // Use user's monthly budget from profile, fallback to 1000
   const monthlyBudget = userData?.profile?.financialProfile?.monthlyBudget || 1000;
+  
+  // Track interactions for learning
+  const logInteraction = useLogProductInteraction();
+
+  // Fetch dynamic categories and brands
+  const { data: categoriesData } = useCategories();
+  const { data: brandsData } = useBrands();
+  const categories = categoriesData?.categories || [];
+  const brands = brandsData?.brands || [];
 
   // Check for image search on mount
   React.useEffect(() => {
@@ -163,6 +173,12 @@ function SearchPageContent() {
       localStorage.setItem("cart", JSON.stringify(cart));
       // Dispatch event to update header count
       window.dispatchEvent(new Event("cartUpdated"));
+      // Log interaction for learning
+      logInteraction.mutate({
+        productId,
+        interactionType: "add_to_cart",
+        metadata: { user_id: DEMO_USER_ID, source: "search" }
+      });
     }
   };
 
@@ -173,11 +189,33 @@ function SearchPageContent() {
       localStorage.setItem("wishlist", JSON.stringify(wishlist));
       // Dispatch event to update header count
       window.dispatchEvent(new Event("wishlistUpdated"));
+      // Log interaction for learning
+      logInteraction.mutate({
+        productId,
+        interactionType: "wishlist",
+        metadata: { user_id: DEMO_USER_ID, source: "search" }
+      });
     }
+  };
+
+  // Handle product click - log interaction
+  const handleProductClick = (productId: string) => {
+    logInteraction.mutate({
+      productId,
+      interactionType: "click",
+      metadata: { user_id: DEMO_USER_ID, source: "search", query }
+    });
   };
 
   return (
     <div className="container mx-auto px-4 py-6">
+      {/* Recently Viewed Section - Show when no active search */}
+      {!query && !imageSearchData && (
+        <div className="mb-8">
+          <RecentlyViewed maxDisplay={6} />
+        </div>
+      )}
+
       {/* Search Header */}
       <div className="mb-6">
         <SearchBar
@@ -217,8 +255,9 @@ function SearchPageContent() {
             onFiltersChange={handleFiltersChange}
             sortOrder={sortOrder}
             onSortChange={setSortOrder}
-            categories={[]}
-            brands={[]}
+            categories={categories}
+            brands={brands}
+            priceRange={{ min: 0, max: 5000 }}
           />
         </aside>
 
@@ -264,8 +303,9 @@ function SearchPageContent() {
                       onFiltersChange={handleFiltersChange}
                       sortOrder={sortOrder}
                       onSortChange={setSortOrder}
-                      categories={[]}
-                      brands={[]}
+                      categories={categories}
+                      brands={brands}
+                      priceRange={{ min: 0, max: 5000 }}
                     />
                   </div>
                 </SheetContent>
@@ -412,6 +452,7 @@ function SearchPageContent() {
                   monthlyBudget={monthlyBudget}
                   onAddToCart={() => handleAddToCart(product.id)}
                   onAddToWishlist={() => handleAddToWishlist(product.id)}
+                  onClick={() => handleProductClick(product.id)}
                   className={viewMode === "list" ? "flex-row" : undefined}
                 />
               ))}

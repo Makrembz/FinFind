@@ -38,6 +38,149 @@ router = APIRouter()
 
 
 # ==============================================================================
+# Trending/Featured Products (No user required)
+# ==============================================================================
+
+@router.get(
+    "/trending",
+    response_model=RecommendationResponse,
+    summary="Get trending/featured products"
+)
+async def get_trending_products(
+    request: Request,
+    category: Optional[str] = Query(None, description="Filter by category"),
+    limit: int = Query(12, ge=1, le=50),
+    qdrant: QdrantService = Depends(get_qdrant_service),
+    _rate_limit: None = Depends(check_rate_limit)
+):
+    """
+    Get trending and featured products.
+    
+    Returns top-rated, popular products for users who haven't set preferences yet.
+    Great for discovery and homepage content.
+    """
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    
+    try:
+        # Build filters - prioritize high-rated, in-stock items
+        filters = {}
+        
+        if category:
+            filters["category"] = {"match": category}
+        
+        # Get products sorted by rating and popularity
+        # Use scroll to get products, then sort by rating
+        results = qdrant.scroll(
+            collection="products",
+            limit=limit * 3,  # Get more to filter
+            filters=filters if filters else None,
+            with_payload=True
+        )
+        
+        # Process and score products
+        scored_products = []
+        
+        # Import math at the top level for efficiency
+        import math
+        
+        for result in results:
+            outer_payload = result.get("payload", {})
+            payload = outer_payload.get("payload", outer_payload)
+            
+            # Calculate a trending score based on rating, reviews, and recency
+            rating = payload.get("rating_avg", 0) or 0
+            review_count = payload.get("review_count", 0) or 0
+            price = payload.get("price", 0) or 0
+            
+            # Trending score formula: rating * log(reviews+1) with bonus for deals
+            trending_score = rating * math.log(review_count + 2)
+            
+            # Bonus for items with discounts
+            original_price = payload.get("original_price", price)
+            if original_price and original_price > price:
+                discount_pct = (original_price - price) / original_price
+                trending_score *= (1 + discount_pct)
+            
+            scored_products.append({
+                "id": result.get("id", ""),
+                "payload": payload,
+                "score": trending_score
+            })
+        
+        # Sort by trending score and take top items
+        scored_products.sort(key=lambda x: x["score"], reverse=True)
+        top_products = scored_products[:limit]
+        
+        # Format recommendations
+        recommendations = []
+        reasons_map = {}
+        
+        for item in top_products:
+            product_id = item["id"]
+            payload = item["payload"]
+            
+            product = ProductSearchResult(
+                id=product_id,
+                name=payload.get("title", payload.get("name", "Unknown")),
+                description=payload.get("description"),
+                price=payload.get("price", 0.0),
+                original_price=payload.get("original_price"),
+                category=payload.get("category", "Unknown"),
+                subcategory=payload.get("subcategory"),
+                brand=payload.get("brand"),
+                rating=payload.get("rating_avg"),
+                review_count=payload.get("review_count"),
+                image_url=payload.get("image_url"),
+                in_stock=payload.get("stock_status", "in_stock") == "in_stock",
+                relevance_score=item["score"]
+            )
+            recommendations.append(product)
+            
+            # Generate reason
+            reasons = []
+            rating = payload.get("rating_avg", 0) or 0
+            review_count = payload.get("review_count", 0) or 0
+            
+            if rating >= 4.5:
+                reasons.append(f"⭐ Top rated ({rating}/5)")
+            elif rating >= 4.0:
+                reasons.append(f"Highly rated ({rating}/5)")
+            
+            if review_count >= 100:
+                reasons.append(f"🔥 Popular choice ({review_count}+ reviews)")
+            elif review_count >= 50:
+                reasons.append(f"Well reviewed ({review_count} reviews)")
+            
+            original_price = payload.get("original_price")
+            price = payload.get("price", 0)
+            if original_price and original_price > price:
+                discount = int((original_price - price) / original_price * 100)
+                reasons.append(f"💰 {discount}% off")
+            
+            if not reasons:
+                reasons.append("Featured product")
+            
+            reasons_map[product_id] = reasons
+        
+        return RecommendationResponse(
+            success=True,
+            user_id="anonymous",
+            recommendations=recommendations,
+            reasons=reasons_map,
+            total=len(recommendations),
+            explanation="Trending products based on ratings, popularity, and deals",
+            request_id=request_id
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting trending products: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get trending products: {str(e)}"
+        )
+
+
+# ==============================================================================
 # Personalized Recommendations
 # ==============================================================================
 
@@ -142,26 +285,90 @@ async def get_recommendations(
         )
         
         viewed_product_ids = set()
+        positive_product_ids = []  # Products user showed interest in (for collaborative filtering)
+        negative_product_ids = []  # Products user disliked
+        
+        # Helper to check if ID looks like a valid UUID (not old prod_xxx format)
+        import re
+        uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
+        
         for i in past_interactions:
             outer_interaction = i.get("payload", {})
             inner_interaction = outer_interaction.get("payload", outer_interaction)
-            if inner_interaction.get("product_id"):
-                viewed_product_ids.add(inner_interaction.get("product_id"))
+            product_id = inner_interaction.get("product_id")
+            interaction_type = inner_interaction.get("interaction_type", "")
+            
+            if product_id:
+                viewed_product_ids.add(product_id)
+                
+                # Only use valid UUID product IDs for collaborative filtering
+                is_valid_uuid = uuid_pattern.match(product_id) is not None
+                
+                # Positive signals for collaborative filtering
+                if interaction_type in ["purchase", "add_to_cart", "wishlist", "bookmark"]:
+                    if is_valid_uuid and product_id not in positive_product_ids:
+                        positive_product_ids.append(product_id)
+                # Negative signals
+                elif interaction_type in ["dislike", "remove_from_cart"]:
+                    if is_valid_uuid and product_id not in negative_product_ids:
+                        negative_product_ids.append(product_id)
+        
+        logger.info(f"User {user_id} has {len(positive_product_ids)} positive interactions for collaborative filtering")
+        
+        # Use collaborative filtering if user has positive interactions
+        collaborative_results = []
+        if positive_product_ids:
+            try:
+                # Use Qdrant's recommend API for collaborative filtering
+                # This finds products similar to what the user liked
+                collaborative_results = qdrant.recommend(
+                    collection="products",
+                    positive_ids=positive_product_ids[:10],  # Use top 10 positive signals
+                    negative_ids=negative_product_ids[:5] if negative_product_ids else None,
+                    limit=limit * 2,
+                    filters=filters if filters else None
+                )
+                logger.info(f"Collaborative filtering found {len(collaborative_results)} products for user {user_id}")
+            except Exception as cf_error:
+                logger.warning(f"Collaborative filtering failed, falling back to vector search: {cf_error}")
+                collaborative_results = []
         
         # Search for recommendations using MMR for diversity (sync method)
-        results = qdrant.mmr_search(
+        # This is content-based filtering using user profile vector
+        vector_results = qdrant.mmr_search(
             collection="products",
             query_vector=search_vector,
             limit=limit + len(viewed_product_ids),  # Get extra to filter
             diversity=diversity,
-            filters=filters if filters else None
+            filters=filters if filters else None,
+            vector_name="text"  # Use the "text" named vector for semantic search
         )
+        
+        # Merge results: prioritize collaborative filtering, fill with content-based
+        seen_ids = set()
+        merged_results = []
+        
+        # First add collaborative filtering results (user behavior based)
+        for result in collaborative_results:
+            product_id = result.get("id", "")
+            if product_id not in viewed_product_ids and product_id not in seen_ids:
+                result["recommendation_source"] = "collaborative"
+                merged_results.append(result)
+                seen_ids.add(product_id)
+        
+        # Then add content-based results (profile/vector based)
+        for result in vector_results:
+            product_id = result.get("id", "")
+            if product_id not in viewed_product_ids and product_id not in seen_ids:
+                result["recommendation_source"] = "content_based"
+                merged_results.append(result)
+                seen_ids.add(product_id)
         
         # Format recommendations
         recommendations = []
         reasons_map = {}
         
-        for result in results:
+        for result in merged_results[:limit]:
             product_id = result.get("id", "")
             
             # Skip already viewed products
@@ -195,6 +402,11 @@ async def get_recommendations(
             # Generate recommendation reason
             if include_reasons:
                 reasons = []
+                recommendation_source = result.get("recommendation_source", "content_based")
+                
+                # Add collaborative filtering reason if applicable
+                if recommendation_source == "collaborative":
+                    reasons.append("🎯 Based on your shopping behavior")
                 
                 if payload.get("category") in preferred_categories:
                     reasons.append(f"Matches your interest in {payload.get('category')}")
@@ -215,6 +427,11 @@ async def get_recommendations(
                     reasons.append("Recommended based on your profile")
                 
                 reasons_map[product_id] = reasons
+        
+        # Add explanation about method used
+        method_explanation = "Personalized using your preferences"
+        if positive_product_ids:
+            method_explanation = f"Collaborative filtering based on {len(positive_product_ids)} interactions + profile preferences"
         
         return RecommendationResponse(
             success=True,
@@ -504,7 +721,8 @@ async def get_alternatives(
             query_vector=search_vector,
             limit=limit * 2 + 1,  # Get extra for filtering
             diversity=0.4,
-            filters=filters
+            filters=filters,
+            vector_name="text"  # Use the "text" named vector for semantic search
         )
         
         # Score and rank alternatives

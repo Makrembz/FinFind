@@ -225,6 +225,24 @@ export const searchApi = {
     });
     return response.data;
   },
+
+  /**
+   * Get available categories
+   */
+  async getCategories(): Promise<{ categories: string[] }> {
+    const response = await apiClient.get<{ categories: string[] }>("/search/categories");
+    return response.data;
+  },
+
+  /**
+   * Get available brands, optionally filtered by category
+   */
+  async getBrands(category?: string): Promise<{ brands: string[] }> {
+    const response = await apiClient.get<{ brands: string[] }>("/search/brands", {
+      params: category ? { category } : {},
+    });
+    return response.data;
+  },
 };
 
 // ============================================================================
@@ -507,6 +525,43 @@ export const userApi = {
 
 export const recommendationsApi = {
   /**
+   * Get trending/featured products (no auth required)
+   */
+  async getTrendingProducts(
+    options?: {
+      category?: string;
+      limit?: number;
+    }
+  ): Promise<RecommendationResponse> {
+    const response = await apiClient.get(
+      `/recommendations/trending`,
+      {
+        params: {
+          category: options?.category,
+          limit: options?.limit || 12,
+        },
+      }
+    );
+    const data = response.data;
+    const reasons = data.reasons || {};
+    
+    // Map recommendations and attach reasons as matchExplanation
+    const recommendations = (data.recommendations || []).map((product: any) => {
+      const transformed = transformProduct(product);
+      const productReasons = reasons[transformed.id];
+      if (productReasons && productReasons.length > 0) {
+        transformed.matchExplanation = productReasons.join(' • ');
+      }
+      return transformed;
+    });
+    
+    return {
+      ...data,
+      recommendations,
+    };
+  },
+
+  /**
    * Get personalized recommendations
    */
   async getRecommendations(
@@ -649,7 +704,7 @@ export const multimodalApi = {
    */
   async transcribeAudio(audioBlob: Blob): Promise<{ text: string; confidence: number }> {
     const formData = new FormData();
-    formData.append("audio", audioBlob, "recording.webm");
+    formData.append("file", audioBlob, "recording.webm");  // Backend expects 'file' field
 
     const response = await apiClient.post("/multimodal/voice/transcribe", formData, {
       headers: { "Content-Type": "multipart/form-data" },

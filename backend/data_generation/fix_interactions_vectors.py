@@ -1,5 +1,7 @@
 """
 Fix user_interactions_qdrant.json by adding embeddings for items with empty vectors.
+
+The file structure is a JSON array of points directly (not wrapped in an object).
 """
 import json
 from pathlib import Path
@@ -14,7 +16,13 @@ def main():
     with open(output_dir / 'user_interactions_qdrant.json', 'r') as f:
         data = json.load(f)
     
-    points = data.get('points', [])
+    # Handle both structures: direct array or wrapped in 'points'
+    if isinstance(data, list):
+        points = data
+        is_array = True
+    else:
+        points = data.get('points', [])
+        is_array = False
     print(f"Total interactions: {len(points)}")
     
     # Find items with empty vectors
@@ -61,25 +69,43 @@ def main():
         
         # View context
         view_ctx = payload.get('view_context') or {}
-        if view_ctx.get('product_name'):
+        if view_ctx.get('product_title'):
+            parts.append(f"viewed: {view_ctx['product_title']}")
+        elif view_ctx.get('product_name'):
             parts.append(f"viewed: {view_ctx['product_name']}")
-        if view_ctx.get('category'):
+        if view_ctx.get('product_category'):
+            parts.append(f"category: {view_ctx['product_category']}")
+        elif view_ctx.get('category'):
             parts.append(f"category: {view_ctx['category']}")
         
         # Cart context
         cart_ctx = payload.get('cart_context') or {}
-        if cart_ctx.get('product_name'):
+        if cart_ctx.get('product_title'):
+            parts.append(f"cart: {cart_ctx['product_title']}")
+        elif cart_ctx.get('product_name'):
             parts.append(f"cart: {cart_ctx['product_name']}")
+        if cart_ctx.get('product_category'):
+            parts.append(f"category: {cart_ctx['product_category']}")
         
         # Purchase context
         purchase_ctx = payload.get('purchase_context') or {}
-        if purchase_ctx.get('product_name'):
+        if purchase_ctx.get('products'):
+            for prod in purchase_ctx['products']:
+                if prod.get('title'):
+                    parts.append(f"purchased: {prod['title']}")
+                if prod.get('category'):
+                    parts.append(f"category: {prod['category']}")
+        elif purchase_ctx.get('product_name'):
             parts.append(f"purchased: {purchase_ctx['product_name']}")
         
         # Wishlist context
         wishlist_ctx = payload.get('wishlist_context') or {}
-        if wishlist_ctx.get('product_name'):
+        if wishlist_ctx.get('product_title'):
+            parts.append(f"wishlist: {wishlist_ctx['product_title']}")
+        elif wishlist_ctx.get('product_name'):
             parts.append(f"wishlist: {wishlist_ctx['product_name']}")
+        if wishlist_ctx.get('product_category'):
+            parts.append(f"category: {wishlist_ctx['product_category']}")
         
         text = ' | '.join(parts) if parts else f"user interaction {interaction_type}"
         texts_to_embed.append(text)
@@ -106,7 +132,11 @@ def main():
     # Save updated file
     print("Saving updated user_interactions_qdrant.json...")
     with open(output_dir / 'user_interactions_qdrant.json', 'w') as f:
-        json.dump(data, f)
+        # Save in the same format as loaded
+        if is_array:
+            json.dump(points, f)
+        else:
+            json.dump(data, f)
     
     print("Done!")
 

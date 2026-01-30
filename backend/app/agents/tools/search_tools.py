@@ -101,14 +101,62 @@ INTENT_PATTERNS = {
 }
 
 CATEGORY_KEYWORDS = {
-    "Electronics": ["laptop", "phone", "computer", "tablet", "headphones", "speaker", "camera", "tv", "monitor", "keyboard", "mouse"],
-    "Clothing": ["shirt", "pants", "dress", "jacket", "shoes", "sneakers", "coat", "jeans", "sweater"],
-    "Home & Kitchen": ["furniture", "kitchen", "cookware", "bedding", "decor", "appliance", "vacuum"],
-    "Sports & Outdoors": ["fitness", "sports", "outdoor", "camping", "bike", "exercise", "yoga"],
-    "Books": ["book", "novel", "reading", "textbook", "ebook"],
-    "Beauty": ["makeup", "skincare", "beauty", "cosmetics", "perfume", "hair"],
-    "Toys & Games": ["toy", "game", "puzzle", "lego", "board game"],
-    "Automotive": ["car", "automotive", "vehicle", "parts", "accessories"]
+    "Electronics": [
+        "laptop", "laptops", "notebook", "computer", "pc", "desktop",
+        "phone", "smartphone", "iphone", "android", "mobile",
+        "tablet", "ipad", "headphones", "earbuds", "airpods",
+        "speaker", "bluetooth speaker", "soundbar",
+        "camera", "dslr", "mirrorless", "webcam",
+        "tv", "television", "monitor", "display", "screen",
+        "keyboard", "mouse", "gaming", "console", "playstation", "xbox", "nintendo",
+        "smartwatch", "wearable", "fitness tracker",
+        "charger", "power bank", "cable", "adapter"
+    ],
+    "Laptops": [  # Sub-category for more specific matching
+        "laptop", "laptops", "notebook", "macbook", "chromebook",
+        "ultrabook", "gaming laptop", "workstation"
+    ],
+    "Smartphones": [
+        "phone", "smartphone", "iphone", "android", "mobile phone",
+        "pixel", "galaxy", "oneplus"
+    ],
+    "Headphones & Audio": [
+        "headphones", "earbuds", "earphones", "airpods", "headset",
+        "speaker", "bluetooth speaker", "soundbar", "audio"
+    ],
+    "Clothing": [
+        "shirt", "t-shirt", "tshirt", "pants", "trousers", "dress", 
+        "jacket", "coat", "shoes", "sneakers", "boots", "sandals",
+        "jeans", "sweater", "hoodie", "shorts", "skirt", "blouse"
+    ],
+    "Home & Kitchen": [
+        "furniture", "sofa", "couch", "table", "chair", "bed", "mattress",
+        "kitchen", "cookware", "pot", "pan", "knife", "utensil",
+        "bedding", "pillow", "blanket", "sheet",
+        "decor", "lamp", "rug", "curtain",
+        "appliance", "vacuum", "blender", "coffee maker", "toaster"
+    ],
+    "Sports & Outdoors": [
+        "fitness", "gym", "workout", "exercise", "yoga", "mat",
+        "sports", "ball", "racket", "bat",
+        "outdoor", "camping", "tent", "hiking", "backpack",
+        "bike", "bicycle", "cycling", "running", "shoes"
+    ],
+    "Books": ["book", "novel", "reading", "textbook", "ebook", "kindle"],
+    "Beauty": [
+        "makeup", "cosmetics", "lipstick", "mascara", "foundation",
+        "skincare", "moisturizer", "serum", "sunscreen",
+        "beauty", "perfume", "cologne", "fragrance",
+        "hair", "shampoo", "conditioner", "styling"
+    ],
+    "Toys & Games": [
+        "toy", "toys", "game", "games", "puzzle", "lego", "board game",
+        "action figure", "doll", "plush"
+    ],
+    "Automotive": [
+        "car", "automotive", "vehicle", "parts", "accessories",
+        "tire", "wheel", "seat cover", "dash cam"
+    ]
 }
 
 
@@ -162,15 +210,46 @@ def extract_price_range(query: str) -> tuple:
 
 
 def detect_category(query: str) -> Optional[str]:
-    """Detect product category from query."""
+    """Detect product category from query with improved matching."""
     query_lower = query.lower()
     
-    for category, keywords in CATEGORY_KEYWORDS.items():
-        for keyword in keywords:
-            if keyword in query_lower:
-                return category
+    # Priority order - more specific categories first
+    priority_categories = [
+        "Laptops", "Smartphones", "Headphones & Audio",  # Specific first
+        "Electronics", "Clothing", "Home & Kitchen", 
+        "Sports & Outdoors", "Books", "Beauty", 
+        "Toys & Games", "Automotive"
+    ]
     
-    return None
+    # Score each category based on keyword matches
+    category_scores = {}
+    for category in priority_categories:
+        if category not in CATEGORY_KEYWORDS:
+            continue
+        keywords = CATEGORY_KEYWORDS[category]
+        score = 0
+        for keyword in keywords:
+            # Exact word match (with word boundaries)
+            if re.search(r'\b' + re.escape(keyword) + r'\b', query_lower):
+                # Longer keywords get higher scores
+                score += len(keyword)
+        if score > 0:
+            category_scores[category] = score
+    
+    if not category_scores:
+        return None
+    
+    # Return the highest scoring category
+    best_category = max(category_scores, key=category_scores.get)
+    
+    # Map sub-categories to main categories for Qdrant filtering
+    category_mapping = {
+        "Laptops": "Electronics",
+        "Smartphones": "Electronics", 
+        "Headphones & Audio": "Electronics"
+    }
+    
+    return category_mapping.get(best_category, best_category)
 
 
 # ========================================

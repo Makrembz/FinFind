@@ -2,10 +2,13 @@
 Integration tests for Qdrant operations.
 
 Tests:
-- Search operations
+- Search operations (using query_points API)
 - Filter operations
 - Upload operations
 - Collection management
+
+Note: These tests use mocked clients. The actual Qdrant client uses
+query_points() instead of search() as of qdrant-client 1.16+.
 """
 
 import pytest
@@ -24,23 +27,24 @@ class TestQdrantSearch:
     @pytest.mark.asyncio
     async def test_semantic_search(self, qdrant_client, sample_products, mock_embedding_service):
         """Test semantic search with embeddings."""
-        # Set up mock response
-        qdrant_client.search = AsyncMock(return_value=[
+        # Set up mock response for query_points (new API)
+        mock_points = [
             MagicMock(id=p["id"], score=0.9 - (i * 0.1), payload=p)
             for i, p in enumerate(sample_products[:5])
-        ])
+        ]
+        qdrant_client.query_points = AsyncMock(return_value=MagicMock(points=mock_points))
         
-        # Perform search
+        # Perform search using new query_points API
         query_embedding = await mock_embedding_service.embed_text("wireless headphones")
-        results = await qdrant_client.search(
+        result = await qdrant_client.query_points(
             collection_name="products",
-            query_vector=query_embedding,
+            query=query_embedding,
             limit=5
         )
         
-        assert len(results) == 5
+        assert len(result.points) == 5
         # Results should be sorted by score (descending)
-        scores = [r.score for r in results]
+        scores = [r.score for r in result.points]
         assert scores == sorted(scores, reverse=True)
     
     @pytest.mark.asyncio
@@ -48,19 +52,20 @@ class TestQdrantSearch:
         """Test search with minimum score threshold."""
         # Only return results above threshold
         high_score_products = sample_products[:2]
-        qdrant_client.search = AsyncMock(return_value=[
+        mock_points = [
             MagicMock(id=p["id"], score=0.8 + (i * 0.05), payload=p)
             for i, p in enumerate(high_score_products)
-        ])
+        ]
+        qdrant_client.query_points = AsyncMock(return_value=MagicMock(points=mock_points))
         
-        results = await qdrant_client.search(
+        result = await qdrant_client.query_points(
             collection_name="products",
-            query_vector=[0.1] * 1536,
+            query=[0.1] * 1536,
             limit=10,
             score_threshold=0.7
         )
         
-        assert all(r.score >= 0.7 for r in results)
+        assert all(r.score >= 0.7 for r in result.points)
     
     @pytest.mark.asyncio
     async def test_search_with_mmr(self, qdrant_client, sample_products):
@@ -72,19 +77,20 @@ class TestQdrantSearch:
             sample_products[4],  # Coffee maker (different category)
         ]
         
-        qdrant_client.search = AsyncMock(return_value=[
+        mock_points = [
             MagicMock(id=p["id"], score=0.8, payload=p)
             for p in diverse_products
-        ])
+        ]
+        qdrant_client.query_points = AsyncMock(return_value=MagicMock(points=mock_points))
         
-        results = await qdrant_client.search(
+        result = await qdrant_client.query_points(
             collection_name="products",
-            query_vector=[0.1] * 1536,
+            query=[0.1] * 1536,
             limit=3
         )
         
         # Check diversity - not all same category
-        categories = [r.payload["category"] for r in results]
+        categories = [r.payload["category"] for r in result.points]
         assert len(set(categories)) > 1  # Multiple categories
 
 
@@ -348,28 +354,28 @@ class TestQdrantErrorHandling:
     @pytest.mark.asyncio
     async def test_connection_error(self, qdrant_client):
         """Test handling connection errors."""
-        qdrant_client.search = AsyncMock(
+        qdrant_client.query_points = AsyncMock(
             side_effect=ConnectionError("Failed to connect to Qdrant")
         )
         
         with pytest.raises(ConnectionError):
-            await qdrant_client.search(
+            await qdrant_client.query_points(
                 collection_name="products",
-                query_vector=[0.1] * 1536,
+                query=[0.1] * 1536,
                 limit=5
             )
     
     @pytest.mark.asyncio
     async def test_collection_not_found(self, qdrant_client):
         """Test handling collection not found."""
-        qdrant_client.search = AsyncMock(
+        qdrant_client.query_points = AsyncMock(
             side_effect=Exception("Collection 'nonexistent' not found")
         )
         
         with pytest.raises(Exception) as exc_info:
-            await qdrant_client.search(
+            await qdrant_client.query_points(
                 collection_name="nonexistent",
-                query_vector=[0.1] * 1536,
+                query=[0.1] * 1536,
                 limit=5
             )
         
@@ -378,13 +384,13 @@ class TestQdrantErrorHandling:
     @pytest.mark.asyncio
     async def test_invalid_vector_dimension(self, qdrant_client):
         """Test handling invalid vector dimensions."""
-        qdrant_client.search = AsyncMock(
+        qdrant_client.query_points = AsyncMock(
             side_effect=ValueError("Vector dimension mismatch")
         )
         
         with pytest.raises(ValueError):
-            await qdrant_client.search(
+            await qdrant_client.query_points(
                 collection_name="products",
-                query_vector=[0.1] * 100,  # Wrong dimension
+                query=[0.1] * 100,  # Wrong dimension
                 limit=5
             )

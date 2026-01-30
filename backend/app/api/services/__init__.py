@@ -11,11 +11,18 @@ from .session_service import (
     RedisSessionStore
 )
 
+from .search_cache import (
+    SearchCacheService,
+    get_search_cache
+)
+
 __all__ = [
     "SessionService",
     "Session",
     "Message",
     "get_session_service",
     "InMemorySessionStore",
-    "RedisSessionStore"
+    "RedisSessionStore",
+    "SearchCacheService",
+    "get_search_cache"
 ]

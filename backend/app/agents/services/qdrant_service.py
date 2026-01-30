@@ -344,15 +344,18 @@ class QdrantService:
         strategy: str = "average_vector"
     ) -> List[Dict[str, Any]]:
         """
-        Get recommendations based on example points.
+        Get recommendations based on example points using Qdrant's query API.
+        
+        Uses the average vector approach: computes a centroid from positive examples
+        and searches for similar items, while avoiding items similar to negative examples.
         
         Args:
             collection: Collection name.
-            positive_ids: IDs of positive examples.
-            negative_ids: IDs of negative examples (to avoid).
+            positive_ids: IDs of positive examples (products user liked).
+            negative_ids: IDs of negative examples (products user disliked).
             limit: Number of recommendations.
             filters: Additional filters.
-            strategy: Recommendation strategy.
+            strategy: Recommendation strategy (unused, kept for compatibility).
             
         Returns:
             List of recommended items.
@@ -360,24 +363,90 @@ class QdrantService:
         try:
             qdrant_filter = self._build_filter(filters) if filters else None
             
-            # Convert IDs to proper format
-            positive = [
-                models.PointId(id=pid) if isinstance(pid, int) else pid
-                for pid in positive_ids
-            ]
-            negative = [
-                models.PointId(id=nid) if isinstance(nid, int) else nid
-                for nid in (negative_ids or [])
-            ]
-            
-            results = self.client.recommend(
+            # Use query_points with recommend approach
+            # First get the vectors for positive examples
+            positive_points = self.client.retrieve(
                 collection_name=collection,
-                positive=positive,
-                negative=negative if negative else None,
+                ids=positive_ids,
+                with_vectors=True,
+                with_payload=False
+            )
+            
+            if not positive_points:
+                logger.warning(f"No valid positive points found for IDs: {positive_ids}")
+                return []
+            
+            # Extract vectors and compute average (centroid)
+            import numpy as np
+            
+            vectors = []
+            for point in positive_points:
+                if point.vector:
+                    # Handle named vectors
+                    if isinstance(point.vector, dict):
+                        # Use 'text' vector if available, else use first available
+                        vec = point.vector.get('text', list(point.vector.values())[0] if point.vector else None)
+                    else:
+                        vec = point.vector
+                    if vec:
+                        vectors.append(vec)
+            
+            if not vectors:
+                logger.warning("No vectors found in positive points")
+                return []
+            
+            # Compute centroid (average vector)
+            centroid = np.mean(vectors, axis=0).tolist()
+            
+            # If we have negative examples, we can adjust the centroid
+            if negative_ids:
+                negative_points = self.client.retrieve(
+                    collection_name=collection,
+                    ids=negative_ids[:5],  # Limit negative examples
+                    with_vectors=True,
+                    with_payload=False
+                )
+                
+                neg_vectors = []
+                for point in negative_points:
+                    if point.vector:
+                        if isinstance(point.vector, dict):
+                            vec = point.vector.get('text', list(point.vector.values())[0] if point.vector else None)
+                        else:
+                            vec = point.vector
+                        if vec:
+                            neg_vectors.append(vec)
+                
+                # Subtract negative centroid from positive centroid
+                if neg_vectors:
+                    neg_centroid = np.mean(neg_vectors, axis=0)
+                    centroid = (np.array(centroid) - 0.3 * neg_centroid).tolist()
+            
+            # Search using the computed centroid
+            # Exclude the original positive IDs from results
+            exclude_filter = models.Filter(
+                must_not=[
+                    models.HasIdCondition(has_id=positive_ids)
+                ]
+            )
+            
+            # Combine with user filters if provided
+            if qdrant_filter:
+                combined_filter = models.Filter(
+                    must=qdrant_filter.must if hasattr(qdrant_filter, 'must') and qdrant_filter.must else [],
+                    must_not=(qdrant_filter.must_not or []) + exclude_filter.must_not
+                )
+            else:
+                combined_filter = exclude_filter
+            
+            # Use query_points for the search
+            results = self.client.query_points(
+                collection_name=collection,
+                query=centroid,
+                using="text",  # Use the text vector
                 limit=limit,
-                query_filter=qdrant_filter,
-                with_payload=True,
-                strategy=RecommendStrategy.AVERAGE_VECTOR
+                query_filter=combined_filter,
+                with_payload=True
             )
             
             return [
@@ -386,15 +455,13 @@ class QdrantService:
                     "score": r.score,
                     "payload": dict(r.payload) if r.payload else {}
                 }
-                for r in results
+                for r in results.points
             ]
             
         except Exception as e:
-            logger.error(f"Recommendation failed: {e}")
-            raise MCPError(
-                code=MCPErrorCode.VECTOR_SEARCH_FAILED,
-                message=f"Recommendation failed: {e}"
-            )
+            logger.error(f"Recommendation failed: {e}", exc_info=True)
+            # Return empty list instead of raising to allow fallback to content-based
+            return []
     
     # ========================================
     # Point Operations

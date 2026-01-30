@@ -26,9 +26,13 @@ import { ExplanationTooltip } from "@/components/product/ExplanationTooltip";
 import { AffordabilityIndicator } from "@/components/product/AffordabilityIndicator";
 import { AlternativeSuggestion } from "@/components/product/AlternativeSuggestion";
 import { ProductCard } from "@/components/product/ProductCard";
-import { useProduct, useProductReviews, useRelatedProducts } from "@/hooks/useApi";
+import { useProduct, useProductReviews, useRelatedProducts, useLogProductInteraction } from "@/hooks/useApi";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { cn, formatCurrency, getStarRating } from "@/lib/utils";
 import type { Review, ProductSearchResult } from "@/types";
+
+// Default user ID for demo purposes
+const DEFAULT_USER_ID = "013c3cb2-482a-55b0-9559-6688c3b78313";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -40,6 +44,12 @@ export default function ProductDetailPage() {
 
   // Demo user budget (in production, this would come from user profile)
   const monthlyBudget = 1000;
+  
+  // Track recently viewed products
+  const { addItem: addToRecentlyViewed } = useRecentlyViewed();
+  
+  // Track interactions for learning
+  const logInteraction = useLogProductInteraction();
 
   const { data: productData, isLoading, error } = useProduct(productId);
   const { data: reviewsData } = useProductReviews(productId);
@@ -51,12 +61,51 @@ export default function ProductDetailPage() {
     (p: ProductSearchResult) => product && p.price < product.price
   );
 
+  // Log view interaction when product loads
+  React.useEffect(() => {
+    if (product) {
+      // Track view interaction for learning
+      logInteraction.mutate({
+        productId: product.id,
+        interactionType: "view",
+        metadata: { 
+          user_id: DEFAULT_USER_ID,
+          source: "product_detail",
+          category: product.category,
+          brand: product.brand,
+          price: product.price
+        }
+      });
+      
+      addToRecentlyViewed({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        imageUrl: product.imageUrl,
+        category: product.category,
+        brand: product.brand,
+        viewedAt: Date.now(),
+      });
+    }
+  }, [product?.id]); // Only trigger on product ID change
+
   const handleAddToCart = () => {
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
     for (let i = 0; i < quantity; i++) {
-      cart.push(productId);
+      if (!cart.includes(productId)) {
+        cart.push(productId);
+      }
     }
     localStorage.setItem("cart", JSON.stringify(cart));
+    window.dispatchEvent(new Event("cartUpdated"));
+    
+    // Log add_to_cart interaction
+    logInteraction.mutate({
+      productId,
+      interactionType: "add_to_cart",
+      metadata: { user_id: DEFAULT_USER_ID, quantity }
+    });
+    
     // Show toast or notification in production
     alert(`Added ${quantity} item(s) to cart`);
   };
@@ -66,6 +115,15 @@ export default function ProductDetailPage() {
     if (!wishlist.includes(productId)) {
       wishlist.push(productId);
       localStorage.setItem("wishlist", JSON.stringify(wishlist));
+      window.dispatchEvent(new Event("wishlistUpdated"));
+      
+      // Log wishlist interaction
+      logInteraction.mutate({
+        productId,
+        interactionType: "wishlist",
+        metadata: { user_id: DEFAULT_USER_ID }
+      });
+      
       alert("Added to wishlist");
     }
   };

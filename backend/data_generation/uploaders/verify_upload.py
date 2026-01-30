@@ -223,11 +223,12 @@ class QdrantVerifier:
         query_vector = self._generate_test_vector(query_text)
         
         try:
-            results = client.search(
+            search_result = client.query_points(
                 collection_name=self.config.products_collection,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=5
             )
+            results = search_result.points
             
             if len(results) > 0:
                 # Check that results have expected fields
@@ -271,11 +272,12 @@ class QdrantVerifier:
         query_vector = self._generate_test_vector(query_text)
         
         try:
-            results = client.search(
+            search_result = client.query_points(
                 collection_name=self.config.user_profiles_collection,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=5
             )
+            results = search_result.points
             
             if len(results) > 0:
                 self.add_result(
@@ -313,11 +315,12 @@ class QdrantVerifier:
         query_vector = self._generate_test_vector(query_text)
         
         try:
-            results = client.search(
+            search_result = client.query_points(
                 collection_name=self.config.reviews_collection,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=5
             )
+            results = search_result.points
             
             if len(results) > 0:
                 self.add_result(
@@ -356,11 +359,12 @@ class QdrantVerifier:
         query_vector = self._generate_test_vector(query_text)
         
         try:
-            results = client.search(
+            search_result = client.query_points(
                 collection_name=self.config.interactions_collection,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=5
             )
+            results = search_result.points
             
             if len(results) > 0:
                 self.add_result(
@@ -701,16 +705,16 @@ class QdrantVerifier:
     def test_user_interactions_query(self) -> bool:
         """Test finding interactions for a user."""
         from qdrant_client.models import Filter, FieldCondition, MatchValue
-        
+
         client = self._get_client()
-        
+
         try:
             # Get a sample user
             users = client.scroll(
                 collection_name=self.config.user_profiles_collection,
                 limit=1
             )
-            
+
             if not users[0]:
                 self.add_result(
                     "User Interactions Query",
@@ -718,10 +722,19 @@ class QdrantVerifier:
                     "No users found to test"
                 )
                 return False
-            
+
             user = users[0][0]
-            user_id = user.payload.get('original_id') or user.payload.get('id')
+            # User ID is stored in the point's id field, not in payload
+            user_id = user.payload.get('original_id') or user.payload.get('id') or user.payload.get('user_id') or str(user.id)
             
+            if not user_id:
+                self.add_result(
+                    "User Interactions Query",
+                    False,
+                    "User has no valid ID field"
+                )
+                return False
+
             # Find interactions for this user
             interactions = client.scroll(
                 collection_name=self.config.interactions_collection,
@@ -729,21 +742,21 @@ class QdrantVerifier:
                     must=[
                         FieldCondition(
                             key="user_id",
-                            match=MatchValue(value=user_id)
+                            match=MatchValue(value=str(user_id))
                         )
                     ]
                 ),
                 limit=20
             )
-            
+
             interaction_count = len(interactions[0])
-            
+
             self.add_result(
                 "User Interactions Query",
                 True,
-                f"Found {interaction_count} interactions for user '{user_id[:20]}...'",
+                f"Found {interaction_count} interactions for user '{str(user_id)[:20]}...'",
                 {
-                    "user_id": user_id,
+                    "user_id": str(user_id),
                     "persona": user.payload.get('persona_type', 'Unknown'),
                     "interaction_count": interaction_count
                 }
@@ -765,17 +778,17 @@ class QdrantVerifier:
     def test_combined_search(self) -> bool:
         """Test combined vector search with filters."""
         from qdrant_client.models import Filter, FieldCondition, MatchValue, Range
-        
+
         client = self._get_client()
-        
+
         query_text = "premium laptop for work"
         query_vector = self._generate_test_vector(query_text)
-        
+
         try:
             # Search with category and price filter
-            results = client.search(
+            search_result = client.query_points(
                 collection_name=self.config.products_collection,
-                query_vector=query_vector,
+                query=query_vector,
                 query_filter=Filter(
                     must=[
                         FieldCondition(
@@ -790,7 +803,8 @@ class QdrantVerifier:
                 ),
                 limit=5
             )
-            
+            results = search_result.points
+
             if len(results) > 0:
                 self.add_result(
                     "Combined Vector + Filter Search",

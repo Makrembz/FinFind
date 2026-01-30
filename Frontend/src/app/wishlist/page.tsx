@@ -18,8 +18,16 @@ interface WishlistItemProps {
 }
 
 function WishlistItem({ productId, onRemove, onMoveToCart }: WishlistItemProps) {
-  const { data, isLoading } = useProduct(productId);
+  const { data, isLoading, isError } = useProduct(productId);
   const product = data?.product;
+
+  // Auto-remove invalid products from wishlist
+  React.useEffect(() => {
+    if (!isLoading && (isError || !product)) {
+      // Product doesn't exist, remove from wishlist
+      onRemove(productId);
+    }
+  }, [isLoading, isError, product, productId, onRemove]);
 
   if (isLoading) {
     return (
