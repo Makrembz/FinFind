@@ -101,32 +101,32 @@ export function ProductCard({
   return (
     <Card
       className={cn(
-        "group relative flex flex-col overflow-hidden transition-shadow hover:shadow-lg",
+        "group relative flex flex-col overflow-hidden border-border/50 bg-card transition-all duration-300 hover:border-border hover:shadow-xl hover:shadow-black/5",
         className
       )}
     >
       {/* Image */}
-      <Link href={`/product/${product.id}`} className="relative aspect-square" onClick={onClick}>
-        <div className="relative h-full w-full bg-muted">
+      <Link href={`/product/${product.id}`} className="relative aspect-square overflow-hidden" onClick={onClick}>
+        <div className="relative h-full w-full bg-muted/30">
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}
               alt={product.name}
               fill
-              className="object-cover transition-transform group-hover:scale-105"
+              className="object-cover transition-all duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           ) : (
             <div className="flex h-full items-center justify-center">
-              <ShoppingCart className="h-12 w-12 text-muted-foreground" />
+              <ShoppingCart className="h-12 w-12 text-muted-foreground/40" />
             </div>
           )}
         </div>
 
         {/* Badges */}
-        <div className="absolute left-2 top-2 flex flex-col gap-1">
+        <div className="absolute left-3 top-3 flex flex-col gap-1.5">
           {hasDiscount && (
-            <Badge variant="destructive" className="text-xs">
+            <Badge variant="destructive" className="text-xs font-medium shadow-sm">
               -{discountPercent}%
             </Badge>
           )}
@@ -141,7 +141,7 @@ export function ProductCard({
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2 h-8 w-8 bg-white/80 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-black/80"
+          className="absolute right-3 top-3 h-9 w-9 rounded-xl bg-white/90 shadow-sm opacity-0 backdrop-blur-sm transition-all duration-200 group-hover:opacity-100 hover:bg-white hover:scale-105 dark:bg-black/80"
           onClick={(e) => {
             e.preventDefault();
             onAddToWishlist?.();
@@ -157,12 +157,12 @@ export function ProductCard({
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-2 top-12 h-8 w-8 bg-white/80 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-black/80"
+              className="absolute right-3 top-14 h-9 w-9 rounded-xl bg-white/90 shadow-sm opacity-0 backdrop-blur-sm transition-all duration-200 group-hover:opacity-100 hover:bg-white hover:scale-105 dark:bg-black/80"
               onClick={(e) => e.preventDefault()}
               aria-label="Share product"
             >
               {shareSuccess ? (
-                <span className="text-green-600 text-xs">✓</span>
+                <span className="text-emerald-600 text-xs font-medium">✓</span>
               ) : (
                 <Share2 className="h-4 w-4" />
               )}
@@ -191,7 +191,7 @@ export function ProductCard({
         </DropdownMenu>
       </Link>
 
-      <CardContent className="flex flex-1 flex-col gap-2 p-4">
+      <CardContent className="flex flex-1 flex-col gap-2.5 p-4">
         {/* Category & Brand */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{product.category}</span>

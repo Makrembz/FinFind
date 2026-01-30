@@ -76,29 +76,31 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-background to-background py-20 lg:py-32">
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute left-1/4 top-1/4 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute right-1/4 top-1/2 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+      {/* Hero Section - Premium Design */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-background via-background to-muted/30 py-24 lg:py-36">
+        {/* Subtle background elements */}
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute -left-1/4 top-0 h-[500px] w-[500px] rounded-full bg-primary/5 blur-[120px]" />
+          <div className="absolute -right-1/4 bottom-0 h-[400px] w-[400px] rounded-full bg-blue-500/5 blur-[100px]" />
         </div>
 
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 lg:px-6">
           <div className="mx-auto max-w-3xl text-center">
-            <Badge variant="secondary" className="mb-4">
-              <Sparkles className="mr-1 h-3 w-3" />
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
               AI-Powered Shopping
-            </Badge>
+            </div>
 
-            <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="mb-6 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               Find products that fit{" "}
-              <span className="text-primary">your budget</span>
+              <span className="bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">
+                your budget
+              </span>
             </h1>
 
-            <p className="mb-8 text-lg text-muted-foreground sm:text-xl">
+            <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl">
               Discover products with AI-powered search. Use text, voice, or image to
-              find exactly what you need, with personalized recommendations and
-              affordability insights.
+              find exactly what you need.
             </p>
 
             <div className="mx-auto max-w-2xl">
@@ -107,18 +109,18 @@ export default function HomePage() {
                 onVoiceClick={() => setShowVoiceRecorder(true)}
                 onImageClick={() => setShowImageUploader(true)}
                 placeholder="Search for products, categories, or describe what you're looking for..."
-                className="shadow-lg"
+                className="shadow-xl shadow-black/5"
               />
             </div>
 
-            <div className="mt-6">
-              <p className="mb-3 text-sm text-muted-foreground">Trending searches:</p>
+            <div className="mt-8">
+              <p className="mb-4 text-sm font-medium text-muted-foreground">Popular searches</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {trendingSearches.map((search) => (
                   <button
                     key={search}
                     onClick={() => handleSearch(search)}
-                    className="rounded-full border bg-background px-3 py-1 text-sm transition-colors hover:bg-muted"
+                    className="rounded-full border border-border/60 bg-background px-4 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:text-foreground"
                   >
                     {search}
                   </button>
@@ -129,27 +131,27 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="mb-8 text-center">
-            <h2 className="mb-2 text-2xl font-bold sm:text-3xl">Browse Categories</h2>
+      {/* Categories Section - Clean Grid */}
+      <section className="py-20 lg:py-24">
+        <div className="container mx-auto px-4 lg:px-6">
+          <div className="mb-12 text-center">
+            <h2 className="mb-3 text-2xl font-semibold tracking-tight sm:text-3xl">Browse Categories</h2>
             <p className="text-muted-foreground">
               Explore products across popular categories
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 lg:gap-6">
             {categories.map((category) => (
               <Card
                 key={category.name}
-                className="cursor-pointer transition-shadow hover:shadow-md"
+                className="group cursor-pointer border-border/60 bg-background transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 card-hover"
                 onClick={() => handleSearch(category.name)}
               >
                 <CardContent className="flex flex-col items-center p-6 text-center">
-                  <span className="mb-2 text-4xl">{category.emoji}</span>
-                  <h3 className="font-medium">{category.name}</h3>
-                  <p className="text-sm text-muted-foreground">{category.count} products</p>
+                  <span className="mb-3 text-4xl transition-transform duration-300 group-hover:scale-110">{category.emoji}</span>
+                  <h3 className="font-medium text-foreground">{category.name}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{category.count} products</p>
                 </CardContent>
               </Card>
             ))}
@@ -157,47 +159,49 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="border-t bg-muted/30 py-16">
-        <div className="container mx-auto px-4">
-          <div className="mb-12 text-center">
-            <h2 className="mb-2 text-2xl font-bold sm:text-3xl">Why FinFind?</h2>
+      {/* Features Section - Minimalist */}
+      <section className="border-t border-border/40 bg-muted/20 py-20 lg:py-24">
+        <div className="container mx-auto px-4 lg:px-6">
+          <div className="mb-16 text-center">
+            <h2 className="mb-3 text-2xl font-semibold tracking-tight sm:text-3xl">Why FinFind?</h2>
             <p className="text-muted-foreground">
               The smartest way to discover and shop for products
             </p>
           </div>
 
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((feature) => (
-              <Card key={feature.title} className="border-none bg-transparent shadow-none">
-                <CardContent className="flex flex-col items-center p-6 text-center">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-2xl">
-                    {feature.icon}
-                  </div>
-                  <h3 className="mb-2 font-semibold">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.description}</p>
-                </CardContent>
-              </Card>
+            {features.map((feature, index) => (
+              <div 
+                key={feature.title} 
+                className="group flex flex-col items-center text-center"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-2xl transition-all duration-300 group-hover:bg-primary/15 group-hover:scale-105">
+                  {feature.icon}
+                </div>
+                <h3 className="mb-2 font-semibold text-foreground">{feature.title}</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="border-t py-16">
-        <div className="container mx-auto px-4">
-          <div className="grid gap-8 text-center sm:grid-cols-3">
-            <div>
-              <div className="mb-2 text-4xl font-bold text-primary">100K+</div>
-              <div className="text-muted-foreground">Products indexed</div>
+      {/* Stats Section - Clean and Bold */}
+      <section className="border-t border-border/40 py-20 lg:py-24">
+        <div className="container mx-auto px-4 lg:px-6">
+          <div className="grid gap-12 text-center sm:grid-cols-3">
+            <div className="group">
+              <div className="mb-2 text-4xl font-bold tracking-tight text-foreground lg:text-5xl">100K+</div>
+              <div className="text-sm font-medium text-muted-foreground">Products indexed</div>
             </div>
-            <div>
-              <div className="mb-2 text-4xl font-bold text-primary">50K+</div>
-              <div className="text-muted-foreground">Happy customers</div>
+            <div className="group">
+              <div className="mb-2 text-4xl font-bold tracking-tight text-foreground lg:text-5xl">50K+</div>
+              <div className="text-sm font-medium text-muted-foreground">Happy customers</div>
             </div>
-            <div>
-              <div className="mb-2 text-4xl font-bold text-primary">99%</div>
-              <div className="text-muted-foreground">Search accuracy</div>
+            <div className="group">
+              <div className="mb-2 text-4xl font-bold tracking-tight text-foreground lg:text-5xl">99%</div>
+              <div className="text-sm font-medium text-muted-foreground">Search accuracy</div>
             </div>
           </div>
         </div>

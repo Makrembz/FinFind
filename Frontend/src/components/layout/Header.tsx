@@ -76,18 +76,18 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 lg:px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+        <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-sm">
             <span className="text-lg font-bold text-primary-foreground">F</span>
           </div>
-          <span className="text-xl font-bold">FinFind</span>
+          <span className="text-xl font-semibold tracking-tight">FinFind</span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-1 md:flex">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             const Icon = link.icon;
@@ -96,8 +96,10 @@ export function Header({
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  "flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200",
+                  isActive 
+                    ? "bg-primary/10 text-primary" 
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -108,9 +110,9 @@ export function Header({
         </nav>
 
         {/* Desktop Actions */}
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-1 md:flex">
           {/* Theme toggle */}
-          <TooltipProvider>
+          <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -118,64 +120,59 @@ export function Header({
                   size="icon"
                   onClick={onToggleTheme}
                   aria-label="Toggle theme"
+                  className="rounded-xl text-muted-foreground hover:text-foreground"
                 >
                   {isDarkMode ? (
-                    <Sun className="h-5 w-5" />
+                    <Sun className="h-[18px] w-[18px]" />
                   ) : (
-                    <Moon className="h-5 w-5" />
+                    <Moon className="h-[18px] w-[18px]" />
                   )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>{isDarkMode ? "Light mode" : "Dark mode"}</p>
+              <TooltipContent side="bottom" className="text-xs">
+                {isDarkMode ? "Light mode" : "Dark mode"}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
           {/* Wishlist */}
-          <TooltipProvider>
+          <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href="/wishlist">
-                  <Button variant="ghost" size="icon" className="relative">
-                    <Heart className="h-5 w-5" />
+                  <Button variant="ghost" size="icon" className="relative rounded-xl text-muted-foreground hover:text-foreground">
+                    <Heart className="h-[18px] w-[18px]" />
                     {wishlistCount > 0 && (
-                      <Badge
-                        className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs"
-                        variant="destructive"
-                      >
+                      <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-medium text-white shadow-sm">
                         {wishlistCount > 9 ? "9+" : wishlistCount}
-                      </Badge>
+                      </span>
                     )}
                   </Button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>Wishlist</p>
+              <TooltipContent side="bottom" className="text-xs">
+                Wishlist
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
           {/* Cart */}
-          <TooltipProvider>
+          <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href="/cart">
-                  <Button variant="ghost" size="icon" className="relative">
-                    <ShoppingCart className="h-5 w-5" />
+                  <Button variant="ghost" size="icon" className="relative rounded-xl text-muted-foreground hover:text-foreground">
+                    <ShoppingCart className="h-[18px] w-[18px]" />
                     {cartItemCount > 0 && (
-                      <Badge
-                        className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs"
-                        variant="default"
-                      >
+                      <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-white shadow-sm">
                         {cartItemCount > 9 ? "9+" : cartItemCount}
-                      </Badge>
+                      </span>
                     )}
                   </Button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>Cart</p>
+              <TooltipContent side="bottom" className="text-xs">
+                Cart
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
