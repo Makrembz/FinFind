@@ -20,6 +20,8 @@ export function MainLayout({
   const [cartCount, setCartCount] = React.useState(0);
   const [wishlistCount, setWishlistCount] = React.useState(0);
   const [isMounted, setIsMounted] = React.useState(false);
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const [actualUserId, setActualUserId] = React.useState(userId);
 
   // Function to update counts from localStorage
   const updateCounts = React.useCallback(() => {
@@ -44,6 +46,27 @@ export function MainLayout({
   // Set mounted state on client
   React.useEffect(() => {
     setIsMounted(true);
+    
+    // Check login status
+    const checkLoginStatus = () => {
+      const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+      const storedUserId = localStorage.getItem("userId");
+      setIsLoggedIn(loggedIn);
+      if (storedUserId) {
+        setActualUserId(storedUserId);
+      }
+    };
+    
+    checkLoginStatus();
+    
+    // Listen for login/logout events
+    window.addEventListener("storage", checkLoginStatus);
+    window.addEventListener("profileUpdated", checkLoginStatus);
+    
+    return () => {
+      window.removeEventListener("storage", checkLoginStatus);
+      window.removeEventListener("profileUpdated", checkLoginStatus);
+    };
   }, []);
 
   // Initialize dark mode from localStorage or system preference
@@ -102,7 +125,7 @@ export function MainLayout({
       <Header
         cartItemCount={isMounted ? cartCount : 0}
         wishlistCount={isMounted ? wishlistCount : 0}
-        isLoggedIn={!!userId}
+        isLoggedIn={isLoggedIn}
         onToggleTheme={toggleTheme}
         isDarkMode={isDarkMode}
       />
@@ -110,9 +133,9 @@ export function MainLayout({
       <Footer />
       
       {/* Floating chat */}
-      {showChat && userId && (
+      {showChat && actualUserId && (
         <ChatInterface
-          userId={userId}
+          userId={actualUserId}
           variant="floating"
           monthlyBudget={1000} // Default budget, would come from user profile
         />
