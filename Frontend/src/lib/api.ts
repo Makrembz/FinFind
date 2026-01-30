@@ -704,7 +704,7 @@ export const multimodalApi = {
    */
   async transcribeAudio(audioBlob: Blob): Promise<{ text: string; confidence: number }> {
     const formData = new FormData();
-    formData.append("audio", audioBlob, "recording.webm");
+    formData.append("file", audioBlob, "recording.webm");  // Backend expects 'file' field
 
     const response = await apiClient.post("/multimodal/voice/transcribe", formData, {
       headers: { "Content-Type": "multipart/form-data" },

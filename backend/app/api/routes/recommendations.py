@@ -297,7 +297,8 @@ async def get_recommendations(
             query_vector=search_vector,
             limit=limit + len(viewed_product_ids),  # Get extra to filter
             diversity=diversity,
-            filters=filters if filters else None
+            filters=filters if filters else None,
+            vector_name="text"  # Use the "text" named vector for semantic search
         )
         
         # Format recommendations
@@ -647,7 +648,8 @@ async def get_alternatives(
             query_vector=search_vector,
             limit=limit * 2 + 1,  # Get extra for filtering
             diversity=0.4,
-            filters=filters
+            filters=filters,
+            vector_name="text"  # Use the "text" named vector for semantic search
         )
         
         # Score and rank alternatives
