@@ -31,10 +31,10 @@ function WishlistItem({ productId, onRemove, onMoveToCart }: WishlistItemProps) 
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="border-border/60">
         <CardContent className="p-4">
           <div className="flex gap-4">
-            <Skeleton className="h-32 w-32 rounded-lg" />
+            <Skeleton className="h-32 w-32 rounded-xl" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-5 w-48" />
               <Skeleton className="h-4 w-24" />
@@ -51,16 +51,16 @@ function WishlistItem({ productId, onRemove, onMoveToCart }: WishlistItemProps) 
   }
 
   return (
-    <Card>
-      <CardContent className="p-4">
+    <Card className="border-border/60 transition-all duration-200 hover:shadow-lg hover:shadow-black/5">
+      <CardContent className="p-5">
         <div className="flex gap-4">
-          <div className="relative h-32 w-32 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+          <div className="relative h-32 w-32 flex-shrink-0 overflow-hidden rounded-xl bg-muted">
             {product.imageUrl ? (
               <Image
                 src={product.imageUrl}
                 alt={product.name}
                 fill
-                className="object-cover"
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
               <div className="flex h-full items-center justify-center">
@@ -74,7 +74,7 @@ function WishlistItem({ productId, onRemove, onMoveToCart }: WishlistItemProps) 
                 <div>
                   <Link
                     href={`/product/${product.id}`}
-                    className="font-medium hover:underline"
+                    className="font-medium hover:text-primary transition-colors"
                   >
                     {product.name}
                   </Link>
@@ -83,11 +83,11 @@ function WishlistItem({ productId, onRemove, onMoveToCart }: WishlistItemProps) 
                 <p className="text-lg font-semibold">{formatCurrency(product.price)}</p>
               </div>
               <div className="mt-2 flex items-center gap-2">
-                <Badge variant={product.inStock ? "default" : "secondary"}>
+                <Badge variant={product.inStock ? "default" : "secondary"} className="rounded-full">
                   {product.inStock ? "In Stock" : "Out of Stock"}
                 </Badge>
                 {product.category && (
-                  <Badge variant="outline">{product.category}</Badge>
+                  <Badge variant="outline" className="rounded-full">{product.category}</Badge>
                 )}
               </div>
             </div>
@@ -167,18 +167,18 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="container mx-auto px-4 py-8 lg:px-6">
+      <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/search">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Continue Shopping
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">My Wishlist</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">My Wishlist</h1>
           {wishlistItems.length > 0 && (
-            <Badge variant="secondary">{wishlistItems.length} items</Badge>
+            <Badge variant="secondary" className="rounded-full">{wishlistItems.length} items</Badge>
           )}
         </div>
         {wishlistItems.length > 0 && (
@@ -189,10 +189,12 @@ export default function WishlistPage() {
       </div>
 
       {wishlistItems.length === 0 ? (
-        <Card>
+        <Card className="border-border/60 shadow-xl shadow-black/5">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <Heart className="h-16 w-16 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Your wishlist is empty</h2>
+            <div className="h-20 w-20 rounded-full bg-rose-500/10 flex items-center justify-center mb-6">
+              <Heart className="h-10 w-10 text-rose-500" />
+            </div>
+            <h2 className="text-xl font-semibold tracking-tight mb-2">Your wishlist is empty</h2>
             <p className="text-muted-foreground mb-6">
               Save items you love by clicking the heart icon on products.
             </p>

@@ -208,7 +208,7 @@ function SearchPageContent() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto px-4 py-8 lg:px-6">
       {/* Recently Viewed Section - Show when no active search */}
       {!query && !imageSearchData && (
         <div className="mb-8">
@@ -217,7 +217,7 @@ function SearchPageContent() {
       )}
 
       {/* Search Header */}
-      <div className="mb-6">
+      <div className="mb-8">
         <SearchBar
           onSearch={handleSearch}
           onVoiceClick={() => setShowVoiceRecorder(true)}
@@ -229,16 +229,16 @@ function SearchPageContent() {
         {/* Image search indicator */}
         {imageSearchData && (
           <div className="mt-4 flex items-center gap-2">
-            <Badge variant="secondary" className="gap-2">
+            <Badge variant="secondary" className="gap-2 rounded-full pl-1">
               <img
                 src={imageSearchData}
                 alt="Search image"
-                className="h-6 w-6 rounded object-cover"
+                className="h-6 w-6 rounded-full object-cover"
               />
               Image search
               <button
                 onClick={clearImageSearch}
-                className="ml-1 rounded-full hover:bg-muted"
+                className="ml-1 rounded-full p-0.5 hover:bg-muted transition-colors"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -247,7 +247,7 @@ function SearchPageContent() {
         )}
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex gap-8">
         {/* Desktop Filters Sidebar */}
         <aside className="hidden w-64 flex-shrink-0 lg:block">
           <FilterPanel
@@ -264,7 +264,7 @@ function SearchPageContent() {
         {/* Main Content */}
         <div className="flex-1">
           {/* Results Header */}
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
               {isLoading ? (
                 <Skeleton className="h-6 w-32" />
@@ -312,11 +312,11 @@ function SearchPageContent() {
               </Sheet>
 
               {/* View Mode Toggle */}
-              <div className="flex rounded-lg border">
+              <div className="flex rounded-xl border border-border/60 overflow-hidden">
                 <Button
                   variant={viewMode === "grid" ? "secondary" : "ghost"}
                   size="sm"
-                  className="rounded-r-none"
+                  className="rounded-none border-0"
                   onClick={() => setViewMode("grid")}
                   aria-label="Grid view"
                 >
@@ -325,7 +325,7 @@ function SearchPageContent() {
                 <Button
                   variant={viewMode === "list" ? "secondary" : "ghost"}
                   size="sm"
-                  className="rounded-l-none"
+                  className="rounded-none border-0"
                   onClick={() => setViewMode("list")}
                   aria-label="List view"
                 >
@@ -341,9 +341,9 @@ function SearchPageContent() {
             filters.priceRange ||
             filters.minRating ||
             filters.inStock) && (
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="mb-6 flex flex-wrap gap-2">
               {filters.categories?.map((cat) => (
-                <Badge key={cat} variant="secondary" className="gap-1">
+                <Badge key={cat} variant="secondary" className="gap-1 rounded-full">
                   {cat}
                   <button
                     onClick={() =>
@@ -352,13 +352,14 @@ function SearchPageContent() {
                         categories: filters.categories?.filter((c) => c !== cat),
                       })
                     }
+                    className="hover:bg-muted rounded-full transition-colors"
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
               ))}
               {filters.brands?.map((brand) => (
-                <Badge key={brand} variant="secondary" className="gap-1">
+                <Badge key={brand} variant="secondary" className="gap-1 rounded-full">
                   {brand}
                   <button
                     onClick={() =>
@@ -367,42 +368,46 @@ function SearchPageContent() {
                         brands: filters.brands?.filter((b) => b !== brand),
                       })
                     }
+                    className="hover:bg-muted rounded-full transition-colors"
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
               ))}
               {filters.priceRange && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1 rounded-full">
                   ${filters.priceRange.min || 0} - ${filters.priceRange.max || "∞"}
                   <button
                     onClick={() =>
                       handleFiltersChange({ ...filters, priceRange: undefined })
                     }
+                    className="hover:bg-muted rounded-full transition-colors"
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
               )}
               {filters.minRating && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1 rounded-full">
                   {filters.minRating}+ stars
                   <button
                     onClick={() =>
                       handleFiltersChange({ ...filters, minRating: undefined })
                     }
+                    className="hover:bg-muted rounded-full transition-colors"
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
               )}
               {filters.inStock && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1 rounded-full">
                   In Stock
                   <button
                     onClick={() =>
                       handleFiltersChange({ ...filters, inStock: false })
                     }
+                    className="hover:bg-muted rounded-full transition-colors"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -412,7 +417,7 @@ function SearchPageContent() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setFilters({ sortBy: "relevance" })}
-                className="h-6 text-xs"
+                className="h-6 text-xs hover:text-primary"
               >
                 Clear all
               </Button>
@@ -424,13 +429,13 @@ function SearchPageContent() {
             <div
               className={
                 viewMode === "grid"
-                  ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                  ? "grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                   : "space-y-4"
               }
             >
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="rounded-lg border p-4">
-                  <Skeleton className="aspect-square w-full" />
+                <div key={i} className="rounded-2xl border border-border/60 p-4">
+                  <Skeleton className="aspect-square w-full rounded-xl" />
                   <Skeleton className="mt-4 h-4 w-3/4" />
                   <Skeleton className="mt-2 h-4 w-1/2" />
                   <Skeleton className="mt-2 h-6 w-1/4" />
@@ -441,7 +446,7 @@ function SearchPageContent() {
             <div
               className={
                 viewMode === "grid"
-                  ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                  ? "grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                   : "space-y-4"
               }
             >
@@ -458,18 +463,22 @@ function SearchPageContent() {
               ))}
             </div>
           ) : (query || imageSearchData) ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Search className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="mb-2 text-lg font-medium">No results found</h3>
-              <p className="text-sm text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mb-6">
+                <Search className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="mb-2 text-lg font-semibold tracking-tight">No results found</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
                 Try adjusting your search or filters to find what you&apos;re looking for
               </p>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Search className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="mb-2 text-lg font-medium">Start searching</h3>
-              <p className="text-sm text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                <Search className="h-10 w-10 text-primary" />
+              </div>
+              <h3 className="mb-2 text-lg font-semibold tracking-tight">Start searching</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
                 Enter a query above or try voice/image search
               </p>
             </div>

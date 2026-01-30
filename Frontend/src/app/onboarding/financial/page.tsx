@@ -136,29 +136,29 @@ export default function FinancialPage() {
       <div className="mx-auto max-w-3xl">
         {/* Progress Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Step 2 of 2</span>
-            <span className="text-sm text-muted-foreground">100%</span>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-muted-foreground">Step 2 of 2</span>
+            <span className="text-sm font-medium text-emerald-600">100%</span>
           </div>
           <Progress value={100} className="h-2" />
         </div>
 
-        <Card>
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600">
-              <DollarSign className="h-8 w-8 text-white" />
+        <Card className="border-border/60 shadow-xl shadow-black/5">
+          <CardHeader className="text-center pb-8">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/25">
+              <DollarSign className="h-10 w-10 text-white" />
             </div>
-            <CardTitle className="text-2xl">Tell us about your finances</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl font-semibold tracking-tight">Tell us about your finances</CardTitle>
+            <CardDescription className="text-base mt-2">
               This helps us recommend products that fit your budget and financial goals.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
             {/* Income & Budget Section */}
             <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <label className="font-medium flex items-center gap-2">
-                  <Wallet className="h-4 w-4" />
+                  <Wallet className="h-4 w-4 text-primary" />
                   Monthly Income
                 </label>
                 <div className="flex items-center gap-4">
@@ -176,9 +176,9 @@ export default function FinancialPage() {
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <label className="font-medium flex items-center gap-2">
-                  <PiggyBank className="h-4 w-4" />
+                  <PiggyBank className="h-4 w-4 text-primary" />
                   Monthly Shopping Budget
                 </label>
                 <div className="flex items-center gap-4">
@@ -198,23 +198,23 @@ export default function FinancialPage() {
             </div>
 
             {/* Credit Score */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <label className="font-medium">Credit Score Range</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {creditScoreOptions.map((option) => (
                   <button
                     key={option.id}
                     onClick={() => setCreditScore(option.id)}
-                    className={`p-3 rounded-lg border-2 transition-all ${
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
                       creditScore === option.id
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
+                        ? "border-primary bg-primary/10 shadow-sm"
+                        : "border-border/60 hover:border-primary/40 hover:bg-muted/30"
                     }`}
                   >
                     <div className={`font-semibold ${option.color}`}>
                       {option.label}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground mt-0.5">
                       {option.range}
                     </div>
                   </button>
@@ -223,7 +223,7 @@ export default function FinancialPage() {
             </div>
 
             {/* Risk Tolerance */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <label className="font-medium">Shopping Risk Tolerance</label>
               <div className="grid gap-3 md:grid-cols-3">
                 {riskToleranceOptions.map((option) => {
@@ -232,14 +232,14 @@ export default function FinancialPage() {
                     <button
                       key={option.id}
                       onClick={() => setRiskTolerance(option.id)}
-                      className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      className={`p-4 rounded-xl border-2 transition-all duration-200 text-left ${
                         riskTolerance === option.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50"
+                          ? "border-primary bg-primary/10 shadow-sm"
+                          : "border-border/60 hover:border-primary/40 hover:bg-muted/30"
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <Icon className="h-4 w-4" />
+                        <Icon className="h-4 w-4 text-primary" />
                         <span className="font-semibold">{option.label}</span>
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -252,7 +252,7 @@ export default function FinancialPage() {
             </div>
 
             {/* Payment Methods */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <label className="font-medium">Preferred Payment Methods</label>
               <div className="flex flex-wrap gap-2">
                 {paymentMethods.map((method) => {
@@ -262,10 +262,10 @@ export default function FinancialPage() {
                     <button
                       key={method.id}
                       onClick={() => togglePaymentMethod(method.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all ${
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all duration-200 ${
                         isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border hover:border-primary/50"
+                          ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                          : "border-border/60 hover:border-primary/40 hover:bg-muted/30"
                       }`}
                     >
                       <Icon className="h-4 w-4" />
@@ -278,21 +278,21 @@ export default function FinancialPage() {
 
             {/* Price Sensitivity & Quality */}
             <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <label className="font-medium">Price Sensitivity</label>
                 <div className="space-y-2">
                   {priceSensitivityOptions.map((option) => (
                     <button
                       key={option.id}
                       onClick={() => setPriceSensitivity(option.id)}
-                      className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+                      className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         priceSensitivity === option.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50"
+                          ? "border-primary bg-primary/10 shadow-sm"
+                          : "border-border/60 hover:border-primary/40 hover:bg-muted/30"
                       }`}
                     >
                       <div className="font-semibold">{option.label}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground mt-0.5">
                         {option.description}
                       </div>
                     </button>
@@ -300,21 +300,21 @@ export default function FinancialPage() {
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <label className="font-medium">Quality Preference</label>
                 <div className="space-y-2">
                   {qualityPreferenceOptions.map((option) => (
                     <button
                       key={option.id}
                       onClick={() => setQualityPreference(option.id)}
-                      className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+                      className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         qualityPreference === option.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50"
+                          ? "border-primary bg-primary/10 shadow-sm"
+                          : "border-border/60 hover:border-primary/40 hover:bg-muted/30"
                       }`}
                     >
                       <div className="font-semibold">{option.label}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground mt-0.5">
                         {option.description}
                       </div>
                     </button>
@@ -324,15 +324,15 @@ export default function FinancialPage() {
             </div>
 
             {/* Additional Preferences */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <label className="font-medium">Additional Preferences</label>
               <div className="flex flex-wrap gap-3">
                 <button
                   onClick={() => setEcoFriendly(!ecoFriendly)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-full border-2 transition-all duration-200 ${
                     ecoFriendly
-                      ? "border-green-500 bg-green-500/10 text-green-600"
-                      : "border-border hover:border-green-500/50"
+                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 shadow-sm"
+                      : "border-border/60 hover:border-emerald-500/40 hover:bg-muted/30"
                   }`}
                 >
                   {ecoFriendly && <Check className="h-4 w-4" />}
@@ -340,10 +340,10 @@ export default function FinancialPage() {
                 </button>
                 <button
                   onClick={() => setLocalPreference(!localPreference)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-full border-2 transition-all duration-200 ${
                     localPreference
-                      ? "border-blue-500 bg-blue-500/10 text-blue-600"
-                      : "border-border hover:border-blue-500/50"
+                      ? "border-blue-500 bg-blue-500/10 text-blue-600 shadow-sm"
+                      : "border-border/60 hover:border-blue-500/40 hover:bg-muted/30"
                   }`}
                 >
                   {localPreference && <Check className="h-4 w-4" />}
@@ -353,7 +353,7 @@ export default function FinancialPage() {
             </div>
 
             {/* Navigation Buttons */}
-            <div className="pt-4 flex justify-between">
+            <div className="pt-6 flex justify-between">
               <Button variant="outline" onClick={handleBack}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
@@ -362,7 +362,7 @@ export default function FinancialPage() {
                 onClick={handleComplete}
                 size="lg"
                 disabled={isLoading}
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-500/25"
               >
                 {isLoading ? (
                   <>

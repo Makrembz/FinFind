@@ -149,22 +149,22 @@ function SolanaPayment({
       </div>
 
       {connected && publicKey && (
-        <div className="p-4 bg-muted rounded-lg space-y-2">
+        <div className="p-4 bg-muted/50 border border-border/60 rounded-xl space-y-2">
           <p className="text-sm">
             <span className="text-muted-foreground">Connected Wallet:</span>
           </p>
-          <p className="text-xs font-mono break-all">{publicKey.toBase58()}</p>
+          <p className="text-xs font-mono break-all text-foreground">{publicKey.toBase58()}</p>
         </div>
       )}
 
       {error && (
-        <div className="p-4 bg-destructive/10 text-destructive rounded-lg text-sm">
+        <div className="p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl text-sm">
           {error}
         </div>
       )}
 
       {txSignature && (
-        <div className="p-4 bg-green-500/10 text-green-600 rounded-lg text-sm">
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl text-sm">
           <p className="font-medium">Transaction Submitted!</p>
           <a
             href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
@@ -322,17 +322,19 @@ export default function CheckoutPage() {
   if (isComplete) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <Card className="max-w-lg mx-auto">
+        <Card className="max-w-lg mx-auto border-border/60 shadow-xl shadow-black/5">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Payment Successful!</h2>
+            <div className="h-20 w-20 rounded-full bg-emerald-500/10 flex items-center justify-center mb-6">
+              <CheckCircle className="h-12 w-12 text-emerald-500" />
+            </div>
+            <h2 className="text-2xl font-semibold tracking-tight mb-2">Payment Successful!</h2>
             <p className="text-muted-foreground text-center mb-4">
               Thank you for your order.
               {paymentMethod === "credit-card" && formData.email && (
                 <>
                   {" "}
                   A confirmation email has been sent to{" "}
-                  <span className="font-medium">{formData.email}</span>
+                  <span className="font-medium text-foreground">{formData.email}</span>
                 </>
               )}
             </p>
@@ -362,10 +364,12 @@ export default function CheckoutPage() {
   if (cartItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <Card className="max-w-lg mx-auto">
+        <Card className="max-w-lg mx-auto border-border/60 shadow-xl shadow-black/5">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <ShoppingCart className="h-16 w-16 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Your cart is empty</h2>
+            <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mb-6">
+              <ShoppingCart className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-semibold tracking-tight mb-2">Your cart is empty</h2>
             <p className="text-muted-foreground mb-6">
               Add some items to your cart before checking out.
             </p>
@@ -379,59 +383,59 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center gap-4">
+    <div className="container mx-auto px-4 py-8 lg:px-6">
+      <div className="mb-8 flex items-center gap-4">
         <Link href="/cart">
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Cart
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold">Checkout</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Checkout</h1>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-8 lg:grid-cols-2">
         {/* Payment Form */}
         <div className="space-y-6">
           {/* Payment Method Selection */}
-          <Card>
+          <Card className="border-border/60">
             <CardHeader>
-              <CardTitle>Payment Method</CardTitle>
+              <CardTitle className="text-lg">Payment Method</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod("credit-card")}
-                  className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-colors ${
+                  className={`flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all duration-200 ${
                     paymentMethod === "credit-card"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border/60 hover:border-primary/40 hover:bg-muted/30"
                   }`}
                 >
                   <CreditCard
-                    className={`h-8 w-8 mb-2 ${
+                    className={`h-8 w-8 mb-2.5 ${
                       paymentMethod === "credit-card"
                         ? "text-primary"
                         : "text-muted-foreground"
                     }`}
                   />
                   <span className="font-medium">Credit Card</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground mt-0.5">
                     Simulated
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod("solana")}
-                  className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-colors ${
+                  className={`flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all duration-200 ${
                     paymentMethod === "solana"
-                      ? "border-purple-500 bg-purple-500/5"
-                      : "border-border hover:border-purple-500/50"
+                      ? "border-purple-500 bg-purple-500/5 shadow-sm"
+                      : "border-border/60 hover:border-purple-500/40 hover:bg-muted/30"
                   }`}
                 >
                   <div
-                    className={`h-8 w-8 mb-2 rounded-full flex items-center justify-center ${
+                    className={`h-8 w-8 mb-2.5 rounded-full flex items-center justify-center ${
                       paymentMethod === "solana"
                         ? "bg-gradient-to-r from-purple-600 to-blue-600"
                         : "bg-muted"
@@ -440,7 +444,7 @@ export default function CheckoutPage() {
                     <span className="text-white text-lg font-bold">◎</span>
                   </div>
                   <span className="font-medium">Solana</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground mt-0.5">
                     Blockchain
                   </span>
                 </button>
@@ -450,17 +454,17 @@ export default function CheckoutPage() {
 
           {/* Credit Card Form */}
           {paymentMethod === "credit-card" && (
-            <Card>
+            <Card className="border-border/60">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
                   <CreditCard className="h-5 w-5" />
                   Card Details
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleCreditCardSubmit} className="space-y-4">
+                <form onSubmit={handleCreditCardSubmit} className="space-y-5">
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">
+                    <label className="text-sm font-medium mb-2 block">
                       Email Address
                     </label>
                     <Input
@@ -474,7 +478,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">
+                    <label className="text-sm font-medium mb-2 block">
                       Cardholder Name
                     </label>
                     <Input
@@ -488,7 +492,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">
+                    <label className="text-sm font-medium mb-2 block">
                       Card Number
                     </label>
                     <Input
@@ -503,7 +507,7 @@ export default function CheckoutPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium mb-1.5 block">
+                      <label className="text-sm font-medium mb-2 block">
                         Expiry Date
                       </label>
                       <Input
@@ -516,7 +520,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium mb-1.5 block">
+                      <label className="text-sm font-medium mb-2 block">
                         CVC
                       </label>
                       <Input
@@ -530,10 +534,10 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  <hr className="my-4" />
+                  <div className="border-t border-border/60 my-6" />
 
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">
+                    <label className="text-sm font-medium mb-2 block">
                       Billing Address
                     </label>
                     <Input
@@ -548,7 +552,7 @@ export default function CheckoutPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium mb-1.5 block">
+                      <label className="text-sm font-medium mb-2 block">
                         City
                       </label>
                       <Input
@@ -561,7 +565,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium mb-1.5 block">
+                      <label className="text-sm font-medium mb-2 block">
                         Postal Code
                       </label>
                       <Input
@@ -576,7 +580,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">
+                    <label className="text-sm font-medium mb-2 block">
                       Country
                     </label>
                     <Input
@@ -591,7 +595,7 @@ export default function CheckoutPage() {
 
                   <Button
                     type="submit"
-                    className="w-full"
+                    className="w-full mt-2"
                     size="lg"
                     disabled={isProcessing}
                   >
@@ -608,7 +612,7 @@ export default function CheckoutPage() {
                     )}
                   </Button>
 
-                  <p className="text-xs text-center text-muted-foreground">
+                  <p className="text-xs text-center text-muted-foreground mt-4">
                     <Lock className="inline h-3 w-3 mr-1" />
                     This is a simulated payment. No real charges will be made.
                   </p>
@@ -619,11 +623,11 @@ export default function CheckoutPage() {
 
           {/* Solana Payment */}
           {paymentMethod === "solana" && (
-            <Card>
+            <Card className="border-border/60">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="h-5 w-5 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">◎</span>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <div className="h-6 w-6 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">◎</span>
                   </div>
                   Pay with Solana
                 </CardTitle>
@@ -641,54 +645,58 @@ export default function CheckoutPage() {
 
         {/* Order Summary */}
         <div>
-          <Card>
+          <Card className="border-border/60 sticky top-24">
             <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
+              <CardTitle className="text-lg">Order Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="divide-y">
+              <div className="divide-y divide-border/60">
                 {cartItems.map((productId) => (
                   <OrderItem key={productId} productId={productId} />
                 ))}
               </div>
 
-              <hr className="my-4" />
+              <div className="border-t border-border/60 my-5" />
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span>Subtotal ({cartItems.length} items)</span>
-                  <span className="text-muted-foreground">Calculated</span>
+                  <span className="text-muted-foreground">Subtotal ({cartItems.length} items)</span>
+                  <span>Calculated</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Shipping</span>
-                  <span className="text-green-600">Free</span>
+                  <span className="text-muted-foreground">Shipping</span>
+                  <span className="text-emerald-600 font-medium">Free</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Tax</span>
-                  <span className="text-muted-foreground">Calculated</span>
+                  <span className="text-muted-foreground">Tax</span>
+                  <span>Calculated</span>
                 </div>
-                <hr className="my-2" />
+                <div className="border-t border-border/60 my-3" />
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total</span>
                   <span>See cart for details</span>
                 </div>
               </div>
 
-              <div className="mt-6 p-4 bg-muted rounded-lg">
+              <div className="mt-6 p-4 bg-muted/50 border border-border/60 rounded-xl">
                 {paymentMethod === "credit-card" ? (
                   <p className="text-sm text-muted-foreground">
-                    🔒 <strong>Secure Checkout</strong> — Credit card payment is
+                    <Lock className="inline h-4 w-4 mr-1.5 text-primary" />
+                    <strong className="text-foreground">Secure Checkout</strong> — Credit card payment is
                     simulated. No real charges will be made.
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    ◎ <strong>Blockchain Payment</strong> — Real Solana
+                    <span className="inline-flex h-4 w-4 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 items-center justify-center mr-1.5">
+                      <span className="text-white text-[10px] font-bold">◎</span>
+                    </span>
+                    <strong className="text-foreground">Blockchain Payment</strong> — Real Solana
                     transaction on Devnet. Get free test SOL from the{" "}
                     <a
                       href="https://faucet.solana.com/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline text-primary"
+                      className="underline text-primary hover:text-primary/80 transition-colors"
                     >
                       Solana Faucet
                     </a>

@@ -29,8 +29,8 @@ function CartItem({ productId, onRemove }: CartItemProps) {
 
   if (isLoading) {
     return (
-      <div className="flex gap-4 py-4">
-        <Skeleton className="h-24 w-24 rounded-lg" />
+      <div className="flex gap-4 py-5">
+        <Skeleton className="h-24 w-24 rounded-xl" />
         <div className="flex-1 space-y-2">
           <Skeleton className="h-5 w-48" />
           <Skeleton className="h-4 w-24" />
@@ -45,8 +45,8 @@ function CartItem({ productId, onRemove }: CartItemProps) {
   }
 
   return (
-    <div className="flex gap-4 py-4">
-      <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+    <div className="flex gap-4 py-5">
+      <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-muted">
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
@@ -65,7 +65,7 @@ function CartItem({ productId, onRemove }: CartItemProps) {
           <div>
             <Link
               href={`/product/${product.id}`}
-              className="font-medium hover:underline"
+              className="font-medium hover:text-primary transition-colors"
             >
               {product.name}
             </Link>
@@ -75,18 +75,18 @@ function CartItem({ productId, onRemove }: CartItemProps) {
         </div>
         <div className="mt-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8">
+            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
               <Minus className="h-4 w-4" />
             </Button>
-            <span className="w-8 text-center">1</span>
-            <Button variant="outline" size="icon" className="h-8 w-8">
+            <span className="w-8 text-center font-medium">1</span>
+            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
               <Plus className="h-4 w-4" />
             </Button>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="text-destructive"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => onRemove(productId)}
           >
             <Trash2 className="mr-1 h-4 w-4" />
@@ -135,16 +135,16 @@ export default function CartPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="container mx-auto px-4 py-8 lg:px-6">
+      <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/search">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Continue Shopping
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">Shopping Cart</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Shopping Cart</h1>
         </div>
         {cartItems.length > 0 && (
           <Button variant="outline" size="sm" onClick={clearCart}>
@@ -154,10 +154,12 @@ export default function CartPage() {
       </div>
 
       {cartItems.length === 0 ? (
-        <Card>
+        <Card className="border-border/60 shadow-xl shadow-black/5">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <ShoppingCart className="h-16 w-16 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Your cart is empty</h2>
+            <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mb-6">
+              <ShoppingCart className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-semibold tracking-tight mb-2">Your cart is empty</h2>
             <p className="text-muted-foreground mb-6">
               Looks like you haven&apos;t added anything to your cart yet.
             </p>
@@ -167,10 +169,10 @@ export default function CartPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <Card>
-              <CardContent className="divide-y">
+            <Card className="border-border/60">
+              <CardContent className="divide-y divide-border/60">
                 {cartItems.map((productId) => (
                   <CartItem
                     key={productId}
@@ -183,26 +185,26 @@ export default function CartPage() {
           </div>
 
           <div>
-            <Card>
+            <Card className="border-border/60 sticky top-24">
               <CardContent className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
-                <div className="space-y-2">
+                <h2 className="text-lg font-semibold tracking-tight mb-5">Order Summary</h2>
+                <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span>Subtotal ({cartItems.length} items)</span>
+                    <span className="text-muted-foreground">Subtotal ({cartItems.length} items)</span>
                     <span>Calculated at checkout</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Shipping</span>
-                    <span>Calculated at checkout</span>
+                    <span className="text-muted-foreground">Shipping</span>
+                    <span className="text-emerald-600 font-medium">Free</span>
                   </div>
-                  <hr className="my-4 border-border" />
-                  <div className="flex justify-between font-semibold">
+                  <div className="border-t border-border/60 my-4" />
+                  <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
                     <span>Calculated at checkout</span>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="pt-0">
                 <Link href="/checkout" className="w-full">
                   <Button className="w-full" size="lg">
                     Proceed to Checkout

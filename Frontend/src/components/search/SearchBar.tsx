@@ -144,7 +144,7 @@ export function SearchBar({
       <form onSubmit={handleSubmit} className="relative">
         <div className="relative flex items-center">
           {/* Search icon */}
-          <Search className="absolute left-3 h-5 w-5 text-muted-foreground" />
+          <Search className="absolute left-4 h-5 w-5 text-muted-foreground/70" />
 
           {/* Input */}
           <Input
@@ -156,7 +156,7 @@ export function SearchBar({
             onFocus={() => query.length >= 2 && setShowSuggestions(true)}
             placeholder={placeholder}
             autoFocus={autoFocus}
-            className="pl-10 pr-24 h-12 text-base"
+            className="h-14 rounded-2xl border-border/60 bg-background pl-12 pr-28 text-base shadow-sm transition-all duration-200 placeholder:text-muted-foreground/60 hover:border-border focus:border-primary focus:shadow-md focus:ring-4 focus:ring-primary/10"
             aria-label="Search products"
             aria-autocomplete="list"
             aria-controls="search-suggestions"
@@ -164,13 +164,13 @@ export function SearchBar({
           />
 
           {/* Action buttons */}
-          <div className="absolute right-2 flex items-center gap-1">
+          <div className="absolute right-2 flex items-center gap-0.5">
             {query && (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground"
                 onClick={handleClear}
                 aria-label="Clear search"
               >

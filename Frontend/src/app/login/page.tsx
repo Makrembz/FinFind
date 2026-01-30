@@ -59,57 +59,63 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-primary/5 via-background to-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-muted/30 via-background to-background px-4">
+      {/* Subtle background elements */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute left-1/4 top-1/4 h-[400px] w-[400px] rounded-full bg-primary/5 blur-[120px]" />
+        <div className="absolute right-1/4 bottom-1/4 h-[300px] w-[300px] rounded-full bg-blue-500/5 blur-[100px]" />
+      </div>
+
+      <Card className="w-full max-w-md border-border/60 shadow-xl shadow-black/5">
+        <CardHeader className="text-center pb-2">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20">
             <Sparkles className="h-8 w-8 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">Welcome to FinFind</CardTitle>
-          <CardDescription>
-            Sign in to access personalized product recommendations
+          <CardTitle className="text-2xl font-semibold tracking-tight">Welcome back</CardTitle>
+          <CardDescription className="text-muted-foreground">
+            Sign in to access personalized recommendations
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+        <CardContent className="pt-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="email">
+              <label className="text-sm font-medium text-foreground" htmlFor="email">
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="pl-11"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="password">
+              <label className="text-sm font-medium text-foreground" htmlFor="password">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
                 <Input
                   id="password"
                   type="password"
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
+                  className="pl-11"
                   required
                 />
               </div>
             </div>
 
             {error && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3.5 text-sm text-destructive">
                 {error}
               </div>
             )}
@@ -117,22 +123,25 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   Signing in...
                 </>
               ) : (
                 <>
-                  <LogIn className="mr-2 h-4 w-4" />
                   Sign In
+                  <LogIn className="h-4 w-4" />
                 </>
               )}
             </Button>
 
-            <div className="mt-4 p-4 bg-muted rounded-lg">
+            <div className="mt-6 p-4 bg-muted/50 border border-border/60 rounded-xl">
               <p className="text-sm text-muted-foreground text-center">
-                <strong>Demo credentials:</strong><br />
-                Email: <code className="bg-background px-1 rounded">demo@finfind.com</code><br />
-                Password: <code className="bg-background px-1 rounded">demo</code>
+                <span className="font-medium text-foreground">Demo credentials</span><br />
+                <span className="mt-1 inline-block">
+                  <code className="bg-background border border-border/60 px-2 py-0.5 rounded-md text-xs">demo@finfind.com</code>
+                  {" / "}
+                  <code className="bg-background border border-border/60 px-2 py-0.5 rounded-md text-xs">demo</code>
+                </span>
               </p>
             </div>
           </form>

@@ -89,20 +89,20 @@ export default function InterestsPage() {
       <div className="mx-auto max-w-3xl">
         {/* Progress Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Step 1 of 2</span>
-            <span className="text-sm text-muted-foreground">50%</span>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-muted-foreground">Step 1 of 2</span>
+            <span className="text-sm font-medium text-primary">50%</span>
           </div>
           <Progress value={50} className="h-2" />
         </div>
 
-        <Card>
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60">
-              <Tag className="h-8 w-8 text-primary-foreground" />
+        <Card className="border-border/60 shadow-xl shadow-black/5">
+          <CardHeader className="text-center pb-8">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/60 shadow-lg shadow-primary/25">
+              <Tag className="h-10 w-10 text-primary-foreground" />
             </div>
-            <CardTitle className="text-2xl">What are you interested in?</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl font-semibold tracking-tight">What are you interested in?</CardTitle>
+            <CardDescription className="text-base mt-2">
               Select categories and brands you love. This helps us personalize your experience.
             </CardDescription>
           </CardHeader>
@@ -110,7 +110,7 @@ export default function InterestsPage() {
             {/* Categories Section */}
             <div>
               <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-4 w-4 text-primary" />
                 Categories ({selectedCategories.length} selected)
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -120,14 +120,14 @@ export default function InterestsPage() {
                     <button
                       key={category.id}
                       onClick={() => toggleCategory(category.id)}
-                      className={`relative flex flex-col items-center p-4 rounded-lg border-2 transition-all hover:scale-105 ${
+                      className={`relative flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-200 hover:scale-[1.02] ${
                         isSelected
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50"
+                          ? "border-primary bg-primary/10 shadow-sm"
+                          : "border-border/60 hover:border-primary/40 hover:bg-muted/30"
                       }`}
                     >
                       {isSelected && (
-                        <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+                        <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center shadow-md">
                           <Check className="h-4 w-4 text-primary-foreground" />
                         </div>
                       )}
@@ -144,7 +144,7 @@ export default function InterestsPage() {
             {/* Brands Section */}
             <div>
               <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <Tag className="h-4 w-4" />
+                <Tag className="h-4 w-4 text-primary" />
                 Favorite Brands ({selectedBrands.length} selected)
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -154,10 +154,10 @@ export default function InterestsPage() {
                     <button
                       key={brand.id}
                       onClick={() => toggleBrand(brand.id)}
-                      className={`px-4 py-2 rounded-full border-2 transition-all ${
+                      className={`px-4 py-2 rounded-full border-2 transition-all duration-200 ${
                         isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border hover:border-primary/50"
+                          ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                          : "border-border/60 hover:border-primary/40 hover:bg-muted/30"
                       }`}
                     >
                       {brand.name}
@@ -168,7 +168,7 @@ export default function InterestsPage() {
             </div>
 
             {/* Continue Button */}
-            <div className="pt-4 flex justify-end">
+            <div className="pt-6 flex justify-end">
               <Button
                 onClick={handleContinue}
                 size="lg"
