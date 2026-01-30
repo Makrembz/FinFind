@@ -335,8 +335,9 @@ export function useUpdateUserPreferences(userId: string) {
   return useMutation({
     mutationFn: (preferences: Partial<import("@/types").UserPreferences>) =>
       userApi.updatePreferences(userId, preferences),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.user(userId) });
+    onSuccess: (data) => {
+      // Update the cache with the new data
+      queryClient.setQueryData(queryKeys.user(userId), data);
     },
   });
 }
@@ -347,8 +348,9 @@ export function useUpdateFinancialProfile(userId: string) {
   return useMutation({
     mutationFn: (profile: Partial<import("@/types").FinancialProfile>) =>
       userApi.updateFinancialProfile(userId, profile),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.user(userId) });
+    onSuccess: (data) => {
+      // Update the cache with the new data
+      queryClient.setQueryData(queryKeys.user(userId), data);
     },
   });
 }

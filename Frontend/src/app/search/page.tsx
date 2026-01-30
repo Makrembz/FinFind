@@ -19,8 +19,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useSearch, useImageSearch } from "@/hooks/useApi";
+import { useSearch, useImageSearch, useUser } from "@/hooks/useApi";
 import type { SearchFilters, SortOrder } from "@/types";
+
+// Demo user ID - in production this would come from auth
+const DEMO_USER_ID = "013c3cb2-482a-55b0-9559-6688c3b78313";
 
 function SearchPageContent() {
   const searchParams = useSearchParams();
@@ -36,8 +39,14 @@ function SearchPageContent() {
   const [filters, setFilters] = React.useState<SearchFilters>({});
   const [imageSearchData, setImageSearchData] = React.useState<string | null>(null);
   
-  // Demo user budget (in production, this would come from user profile)
-  const monthlyBudget = 1000;
+  // Get user profile for budget
+  const userId = typeof window !== 'undefined' 
+    ? localStorage.getItem("userId") || DEMO_USER_ID 
+    : DEMO_USER_ID;
+  const { data: userData } = useUser(userId);
+  
+  // Use user's monthly budget from profile, fallback to 1000
+  const monthlyBudget = userData?.profile?.financialProfile?.monthlyBudget || 1000;
 
   // Check for image search on mount
   React.useEffect(() => {
@@ -74,9 +83,33 @@ function SearchPageContent() {
     }
   }, [imageSearchData]);
 
-  const products = imageSearchData 
+  const rawProducts = imageSearchData 
     ? imageSearch.data?.products || []
     : searchResults?.products || [];
+  
+  // Apply client-side sorting based on sortOrder
+  const products = React.useMemo(() => {
+    const sorted = [...rawProducts];
+    switch (sortOrder) {
+      case 'price_low':
+        return sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+      case 'price_high':
+        return sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
+      case 'rating':
+        return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      case 'popularity':
+        return sorted.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+      case 'newest':
+        // If we had a createdAt field, we'd sort by that
+        // For now, keep original order (most relevant first)
+        return sorted;
+      case 'relevance':
+      default:
+        // Keep original order from search results (already sorted by relevance)
+        return sorted;
+    }
+  }, [rawProducts, sortOrder]);
+  
   const totalResults = imageSearchData
     ? imageSearch.data?.totalResults || 0
     : searchResults?.totalResults || 0;

@@ -218,12 +218,14 @@ Set use_mmr=True for diverse results."""
             search_filter = Filter(must=filter_conditions) if filter_conditions else None
             
             # Execute search using query_points (qdrant-client 1.16+)
+            # Use "text" named vector since products collection has dual vectors
             results = client.query_points(
                 collection_name=collection_name,
                 query=query_vector,
                 query_filter=search_filter,
                 limit=limit,
-                with_payload=True
+                with_payload=True,
+                using="text"  # Use the "text" named vector for semantic search
             )
             
             # Format results
@@ -341,20 +343,28 @@ Can filter by category and price."""
             
             search_filter = Filter(must=filter_conditions) if filter_conditions else None
             
-            # Search for products similar to user profile using query_points (new API)
-            search_result = client.query_points(
+            # Search for products similar to user profile
+            # Use query_points with named vector since products collection has dual vectors
+            # Extract the 'text' vector if user profile has named vectors
+            if isinstance(user_vector, dict) and 'text' in user_vector:
+                query_vector = user_vector['text']
+            else:
+                query_vector = user_vector
+            
+            results = client.query_points(
                 collection_name=config.products_collection,
-                query=user_vector,
+                query=query_vector,
                 query_filter=search_filter,
-                limit=limit * 2  # Get more to filter
+                limit=limit * 2,  # Get more to filter
+                with_payload=True,
+                using="text"  # Use the "text" named vector
             )
-            results = search_result.points
             
             # Filter out purchased products if needed
             purchased = set(user_profile.get('purchased_products', []))
             recommendations = []
             
-            for result in results:
+            for result in results.points:
                 product_id = result.payload.get('original_id', str(result.id))
                 if exclude_purchased and product_id in purchased:
                     continue
@@ -472,18 +482,25 @@ Can filter to same category or price range."""
             
             search_filter = Filter(must=filter_conditions) if filter_conditions else None
             
-            # Search for similar products using query_points (new API)
-            search_result = client.query_points(
+            # Search for similar products using query_points with named vector
+            # Extract the 'text' vector if source has named vectors
+            if isinstance(source_vector, dict) and 'text' in source_vector:
+                query_vector = source_vector['text']
+            else:
+                query_vector = source_vector
+            
+            results = client.query_points(
                 collection_name=config.products_collection,
-                query=source_vector,
+                query=query_vector,
                 query_filter=search_filter,
-                limit=limit + 1  # +1 to exclude self
+                limit=limit + 1,  # +1 to exclude self
+                with_payload=True,
+                using="text"  # Use the "text" named vector
             )
-            results = search_result.points
             
             # Format results (excluding the source product)
             similar_products = []
-            for result in results:
+            for result in results.points:
                 result_id = result.payload.get('original_id', str(result.id))
                 if result_id == product_id:
                     continue

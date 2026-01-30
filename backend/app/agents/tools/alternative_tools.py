@@ -159,20 +159,27 @@ Can exclude specific products from results."""
             
             search_filter = Filter(must=filter_conditions) if filter_conditions else None
             
-            # Search for similar products using query_points (new API)
-            search_result = client.query_points(
+            # Search for similar products using query_points with named vector
+            # Extract 'text' vector if source has named vectors
+            if isinstance(source_vector, dict) and 'text' in source_vector:
+                query_vector = source_vector['text']
+            else:
+                query_vector = source_vector
+            
+            results = client.query_points(
                 collection_name=config.products_collection,
-                query=source_vector,
+                query=query_vector,
                 query_filter=search_filter,
-                limit=limit + len(exclude_ids) + 1  # Extra to account for exclusions
+                limit=limit + len(exclude_ids) + 1,  # Extra to account for exclusions
+                with_payload=True,
+                using="text"  # Use the "text" named vector
             )
-            results = search_result.points
             
             # Filter and format results
             alternatives = []
             exclude_set = set(exclude_ids + [product_id])
             
-            for result in results:
+            for result in results.points:
                 result_id = result.payload.get('original_id', str(result.id))
                 if result_id in exclude_set:
                     continue
@@ -403,20 +410,21 @@ Reasons for alternatives: over_budget, out_of_stock, low_rating, not_available""
             
             search_filter = Filter(must=filter_conditions) if filter_conditions else None
             
-            # Search for alternatives using query_points (new API)
-            search_result = client.query_points(
+            # Search for alternatives using query_points with named vector
+            results = client.query_points(
                 collection_name=config.qdrant.products_collection,
                 query=search_vector,
                 query_filter=search_filter,
-                limit=num_suggestions + 1  # +1 to exclude original if present
+                limit=num_suggestions + 1,  # +1 to exclude original if present
+                with_payload=True,
+                using="text"  # Use the "text" named vector
             )
-            results = search_result.points
             
             # Filter and format alternatives
             original_id = original_product.get('id') or original_product.get('original_id')
             alternatives = []
             
-            for result in results:
+            for result in results.points:
                 result_id = result.payload.get('original_id', str(result.id))
                 if result_id == original_id:
                     continue

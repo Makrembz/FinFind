@@ -101,6 +101,46 @@ function transformSearchResponse(data: any): SearchResponse {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformImageSearchProduct(product: any): ProductSearchResult {
+  return {
+    id: product.product_id || product.id,
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    originalPrice: product.original_price || product.originalPrice,
+    category: product.category,
+    subcategory: product.subcategory,
+    brand: product.brand,
+    rating: product.rating,
+    reviewCount: product.review_count || product.reviewCount || 0,
+    imageUrl: product.image_url || product.imageUrl,
+    inStock: product.in_stock ?? product.inStock ?? true,
+    relevanceScore: product.similarity_score || product.ranking_score || 0,
+    matchExplanation: product.visual_match_reasons?.join(", ") || "Visual match",
+    matchScore: product.similarity_score,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transformImageSearchResponse(data: any): SearchResponse {
+  // Image search response has different structure: { success, result: { products, ... } }
+  const result = data.result || {};
+  return {
+    success: data.success,
+    query: "Image search",
+    interpretedQuery: "Visual similarity search",
+    products: (result.products || []).map(transformImageSearchProduct),
+    totalResults: result.total_found ?? result.products?.length ?? 0,
+    page: 1,
+    pageSize: result.products?.length ?? 20,
+    totalPages: 1,
+    filtersApplied: result.filters_applied || {},
+    searchTimeMs: result.total_time_ms ?? 0,
+    requestId: data.request_id || '',
+  };
+}
+
 // ============================================================================
 // Search API
 // ============================================================================
@@ -130,6 +170,8 @@ export const searchApi = {
       offset: ((request.page || 1) - 1) * (request.pageSize || 20),
       use_mmr: request.useMmr ?? true,
       diversity: request.diversity ?? 0.3,
+      ranking_strategy: request.filters?.rankingStrategy || request.rankingStrategy || "balanced",
+      apply_ranking: true,
     });
     return transformSearchResponse(response.data);
   },
@@ -155,15 +197,23 @@ export const searchApi = {
    */
   async searchWithImage(imageFile: File, filters?: SearchRequest["filters"]): Promise<SearchResponse> {
     const formData = new FormData();
-    formData.append("image", imageFile);
-    if (filters) {
-      formData.append("filters", JSON.stringify(filters));
+    formData.append("file", imageFile); // Backend expects 'file' field
+    
+    // Pass filters as individual form fields (backend expects these as Form parameters)
+    if (filters?.priceRange?.min !== undefined) {
+      formData.append("min_price", String(filters.priceRange.min));
+    }
+    if (filters?.priceRange?.max !== undefined) {
+      formData.append("max_price", String(filters.priceRange.max));
+    }
+    if (filters?.categories?.length) {
+      formData.append("categories", filters.categories.join(","));
     }
 
     const response = await apiClient.post("/multimodal/image/search", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return transformSearchResponse(response.data);
+    return transformImageSearchResponse(response.data);
   },
 
   /**
@@ -274,7 +324,44 @@ export const userApi = {
    */
   async getProfile(userId: string): Promise<{ profile: User }> {
     const response = await apiClient.get(`/users/${userId}/profile`);
-    return response.data;
+    const data = response.data;
+    
+    // Transform snake_case to camelCase
+    const profile = data.profile;
+    return {
+      profile: {
+        id: profile.user_id,
+        email: profile.email,
+        name: profile.name,
+        avatarUrl: profile.avatar_url,
+        financialProfile: profile.financial_profile ? {
+          monthlyIncome: profile.financial_profile.monthly_income,
+          monthlyBudget: profile.financial_profile.monthly_budget,
+          creditScoreRange: profile.financial_profile.credit_score_range,
+          preferredPaymentMethods: profile.financial_profile.preferred_payment_methods || [],
+          riskTolerance: profile.financial_profile.risk_tolerance,
+          savingsGoal: profile.financial_profile.savings_goal,
+        } : {
+          monthlyBudget: 1000,
+          preferredPaymentMethods: [],
+        },
+        preferences: profile.preferences ? {
+          favoriteCategories: profile.preferences.favorite_categories || [],
+          favoriteBrands: profile.preferences.favorite_brands || [],
+          priceSensitivity: profile.preferences.price_sensitivity,
+          qualityPreference: profile.preferences.quality_preference,
+          ecoFriendly: profile.preferences.eco_friendly || false,
+          localPreference: profile.preferences.local_preference || false,
+        } : {
+          favoriteCategories: [],
+          favoriteBrands: [],
+          ecoFriendly: false,
+          localPreference: false,
+        },
+        createdAt: profile.created_at,
+        updatedAt: profile.updated_at,
+      }
+    };
   },
 
   /**
@@ -332,7 +419,36 @@ export const userApi = {
         local_preference: preferences.localPreference,
       }
     });
-    return response.data;
+    
+    // Transform the response
+    const data = response.data;
+    const profile = data.profile;
+    return {
+      profile: {
+        id: profile.user_id,
+        email: profile.email,
+        name: profile.name,
+        avatarUrl: profile.avatar_url,
+        financialProfile: profile.financial_profile ? {
+          monthlyIncome: profile.financial_profile.monthly_income,
+          monthlyBudget: profile.financial_profile.monthly_budget,
+          creditScoreRange: profile.financial_profile.credit_score_range,
+          preferredPaymentMethods: profile.financial_profile.preferred_payment_methods || [],
+          riskTolerance: profile.financial_profile.risk_tolerance,
+          savingsGoal: profile.financial_profile.savings_goal,
+        } : { monthlyBudget: 1000, preferredPaymentMethods: [] },
+        preferences: profile.preferences ? {
+          favoriteCategories: profile.preferences.favorite_categories || [],
+          favoriteBrands: profile.preferences.favorite_brands || [],
+          priceSensitivity: profile.preferences.price_sensitivity,
+          qualityPreference: profile.preferences.quality_preference,
+          ecoFriendly: profile.preferences.eco_friendly || false,
+          localPreference: profile.preferences.local_preference || false,
+        } : { favoriteCategories: [], favoriteBrands: [], ecoFriendly: false, localPreference: false },
+        createdAt: profile.created_at,
+        updatedAt: profile.updated_at,
+      }
+    };
   },
 
   /**
@@ -352,7 +468,36 @@ export const userApi = {
         savings_goal: profile.savingsGoal,
       }
     });
-    return response.data;
+    
+    // Transform the response
+    const data = response.data;
+    const userProfile = data.profile;
+    return {
+      profile: {
+        id: userProfile.user_id,
+        email: userProfile.email,
+        name: userProfile.name,
+        avatarUrl: userProfile.avatar_url,
+        financialProfile: userProfile.financial_profile ? {
+          monthlyIncome: userProfile.financial_profile.monthly_income,
+          monthlyBudget: userProfile.financial_profile.monthly_budget,
+          creditScoreRange: userProfile.financial_profile.credit_score_range,
+          preferredPaymentMethods: userProfile.financial_profile.preferred_payment_methods || [],
+          riskTolerance: userProfile.financial_profile.risk_tolerance,
+          savingsGoal: userProfile.financial_profile.savings_goal,
+        } : { monthlyBudget: 1000, preferredPaymentMethods: [] },
+        preferences: userProfile.preferences ? {
+          favoriteCategories: userProfile.preferences.favorite_categories || [],
+          favoriteBrands: userProfile.preferences.favorite_brands || [],
+          priceSensitivity: userProfile.preferences.price_sensitivity,
+          qualityPreference: userProfile.preferences.quality_preference,
+          ecoFriendly: userProfile.preferences.eco_friendly || false,
+          localPreference: userProfile.preferences.local_preference || false,
+        } : { favoriteCategories: [], favoriteBrands: [], ecoFriendly: false, localPreference: false },
+        createdAt: userProfile.created_at,
+        updatedAt: userProfile.updated_at,
+      }
+    };
   },
 };
 
@@ -461,9 +606,17 @@ export const chatApi = {
       include_explanations: request.includeProducts ?? true,
     });
     const data = response.data;
+    // Transform backend response to frontend format
     return {
-      ...data,
+      success: data.success,
+      message: data.response || data.output || '',  // Backend returns 'response', frontend expects 'message'
+      sessionId: data.session_id || data.sessionId || request.sessionId || '',
+      agentUsed: data.agent_used || data.agentUsed,
       products: (data.products || []).map(transformProduct),
+      followUpSuggestions: data.follow_up_suggestions || data.followUpSuggestions || [],
+      confidence: data.confidence,
+      processingTimeMs: data.processing_time_ms || data.processingTimeMs || 0,
+      requestId: data.request_id || data.requestId || '',
     };
   },
 

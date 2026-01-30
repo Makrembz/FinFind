@@ -237,22 +237,33 @@ class MultimodalConfig(BaseModel):
     @classmethod
     def from_env(cls) -> "MultimodalConfig":
         """Create configuration from environment variables."""
+        # Image backend: prefer CLIP local for proper image embeddings (512-dim)
+        # This generates actual image embeddings for similarity search
+        image_backend = os.getenv("IMAGE_BACKEND", "clip_local")
+        
         image_config = ImageConfig(
-            backend=ImageBackend(
-                os.getenv("IMAGE_BACKEND", "clip_local")
-            ),
+            backend=ImageBackend(image_backend),
             clip_model_name=os.getenv(
                 "CLIP_MODEL", "openai/clip-vit-base-patch32"
             ),
             vision_api_key=os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY"),
             device=os.getenv("IMAGE_DEVICE", "cpu"),
-            embedding_dimension=int(os.getenv("IMAGE_EMBEDDING_DIM", "512")),
+            embedding_dimension=512,  # CLIP ViT-B/32 produces 512-dim embeddings
         )
         
+        # Auto-select voice backend based on available API keys
+        voice_backend = os.getenv("VOICE_BACKEND")
+        if not voice_backend:
+            # Prefer Groq if API key is available, otherwise fall back to local
+            if os.getenv("GROQ_API_KEY"):
+                voice_backend = "groq_whisper"
+            elif os.getenv("OPENAI_API_KEY"):
+                voice_backend = "whisper_api"
+            else:
+                voice_backend = "whisper_local"
+        
         voice_config = VoiceConfig(
-            backend=VoiceBackend(
-                os.getenv("VOICE_BACKEND", "whisper_local")
-            ),
+            backend=VoiceBackend(voice_backend),
             whisper_model_size=os.getenv("WHISPER_MODEL_SIZE", "base"),
             whisper_api_key=os.getenv("OPENAI_API_KEY"),
             groq_api_key=os.getenv("GROQ_API_KEY"),
@@ -271,4 +282,7 @@ class MultimodalConfig(BaseModel):
 @lru_cache()
 def get_multimodal_config() -> MultimodalConfig:
     """Get singleton multimodal configuration."""
+    # Ensure environment variables are loaded
+    from dotenv import load_dotenv
+    load_dotenv()
     return MultimodalConfig.from_env()

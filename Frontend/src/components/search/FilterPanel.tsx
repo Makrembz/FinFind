@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { X, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { SearchFilters, SortOrder } from "@/types";
+import type { SearchFilters, SortOrder, RankingStrategy } from "@/types";
 
 interface FilterPanelProps {
   filters: SearchFilters;
@@ -171,6 +171,57 @@ export function FilterPanel({
                 <SelectItem value="rating">Rating</SelectItem>
                 <SelectItem value="newest">Newest</SelectItem>
                 <SelectItem value="popularity">Popularity</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Ranking Strategy */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Ranking Strategy</label>
+            <Select 
+              value={filters.rankingStrategy || "balanced"} 
+              onValueChange={(v) => onFiltersChange({ ...filters, rankingStrategy: v as RankingStrategy })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select ranking strategy" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="budget_smart">
+                  <div className="flex flex-col">
+                    <span>💰 Budget Smart</span>
+                    <span className="text-xs text-muted-foreground">Prioritizes your financial health</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="balanced">
+                  <div className="flex flex-col">
+                    <span>Balanced</span>
+                    <span className="text-xs text-muted-foreground">Mix of relevance & quality</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="relevance">
+                  <div className="flex flex-col">
+                    <span>Relevance</span>
+                    <span className="text-xs text-muted-foreground">Pure semantic match</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="popularity">
+                  <div className="flex flex-col">
+                    <span>Popularity</span>
+                    <span className="text-xs text-muted-foreground">Top rated & reviewed</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="personalized">
+                  <div className="flex flex-col">
+                    <span>Personalized</span>
+                    <span className="text-xs text-muted-foreground">Based on your preferences</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="value">
+                  <div className="flex flex-col">
+                    <span>Best Value</span>
+                    <span className="text-xs text-muted-foreground">Best bang for your buck</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

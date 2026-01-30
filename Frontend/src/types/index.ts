@@ -132,6 +132,14 @@ export type InteractionType =
 // Search Types
 // ============================================================================
 
+export type RankingStrategy = 
+  | 'relevance'      // Pure semantic relevance
+  | 'popularity'     // Rating + reviews weighted
+  | 'balanced'       // Mix of relevance + quality (default)
+  | 'personalized'   // User-preference weighted
+  | 'value'          // Best bang for buck
+  | 'budget_smart';  // Financial-first: prioritizes budget fit & affordability
+
 export interface SearchFilters {
   categories?: string[];
   brands?: string[];
@@ -144,6 +152,7 @@ export interface SearchFilters {
   paymentMethods?: string[];
   tags?: string[];
   sortBy?: string;
+  rankingStrategy?: RankingStrategy;
 }
 
 export interface SearchRequest {
@@ -156,6 +165,7 @@ export interface SearchRequest {
   diversity?: number;
   includeExplanation?: boolean;
   userId?: string;
+  rankingStrategy?: RankingStrategy;
 }
 
 export type SortOrder = 
