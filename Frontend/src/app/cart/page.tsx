@@ -203,9 +203,11 @@ export default function CartPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="w-full" size="lg">
-                  Proceed to Checkout
-                </Button>
+                <Link href="/checkout" className="w-full">
+                  <Button className="w-full" size="lg">
+                    Proceed to Checkout
+                  </Button>
+                </Link>
               </CardFooter>
             </Card>
           </div>

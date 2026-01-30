@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SolanaWalletProvider } from "./SolanaWalletProvider";
 
 // Create a client
 function makeQueryClient() {
@@ -39,7 +40,7 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <SolanaWalletProvider>{children}</SolanaWalletProvider>
     </QueryClientProvider>
   );
 }
