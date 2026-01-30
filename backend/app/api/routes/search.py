@@ -174,14 +174,15 @@ async def search_products(
                 filters["stock_status"] = {"match": "in_stock" if body.filters.in_stock else "out_of_stock"}
         
         # Perform search (sync methods)
-        # Note: Don't pass vector_name for collections with default/unnamed vectors
+        # Use named vector "text" for text-based semantic search
         if body.use_mmr:
             results = qdrant.mmr_search(
                 collection="products",
                 query_vector=query_embedding,
                 limit=body.limit * 2 if body.apply_ranking else body.limit,  # Fetch more for ranking
                 diversity=body.diversity,
-                filters=filters if filters else None
+                filters=filters if filters else None,
+                vector_name="text"  # Use text vector for semantic search
             )
         else:
             results = qdrant.semantic_search(
@@ -189,7 +190,8 @@ async def search_products(
                 query_vector=query_embedding,
                 limit=body.limit * 2 if body.apply_ranking else body.limit,  # Fetch more for ranking
                 score_threshold=body.score_threshold,
-                filters=filters if filters else None
+                filters=filters if filters else None,
+                vector_name="text"  # Use text vector for semantic search
             )
         
         # Apply intelligent ranking if enabled
@@ -364,12 +366,13 @@ async def search_suggestions(
         query_embedding = embedder.embed(q)
         
         # Search for similar products (sync method)
-        # Note: Don't pass vector_name for collections with default/unnamed vectors
+        # Use named vector "text" for text-based semantic search
         results = qdrant.semantic_search(
             collection="products",
             query_vector=query_embedding,
             limit=limit * 2,  # Get more to extract unique names
-            score_threshold=0.3
+            score_threshold=0.3,
+            vector_name="text"  # Use text vector for semantic search
         )
         
         # Extract unique product names/categories as suggestions
