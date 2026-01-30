@@ -32,6 +32,11 @@ htmlcov/
 .nox/
 .mypy_cache/
 .ruff_cache/
+venv/
+.venv/
+env/
+ENV/
+backend/venv/
 
 # Node.js
 node_modules/
@@ -40,6 +45,8 @@ node_modules/
 .yarn/unplugged
 .yarn/build-state.yml
 .pnp.*
+Frontend/node_modules/
+Frontend/.next/
 
 # Next.js
 .next/

@@ -213,87 +213,31 @@ We maintain 4 Qdrant collections, each serving a specific purpose:
 
 #### 1. Semantic Product Search
 
-```python
-# Convert user query to embedding
-query_embedding = embedding_model.encode("wireless headphones under $100")
+Users can search using natural language (e.g. "wireless headphones under $100").
+The system understands the meaning of the query, not just keywords, and returns the most relevant products.
+Filters like price, category, and other attributes are applied to refine the results.
 
-# Search with filters
-results = qdrant_client.search(
-    collection_name="products",
-    query_vector=query_embedding,
-    query_filter=Filter(
-        must=[
-            FieldCondition(key="price", range=Range(lte=100.0)),
-            FieldCondition(key="category", match=MatchValue(value="Electronics"))
-        ]
-    ),
-    limit=10
-)
-```
+**Result:** More accurate, human-like search results.
 
 #### 2. Personalized Recommendations
 
-```python
-# Get user's preference vector from profile
-user_profile = qdrant_client.retrieve(
-    collection_name="user_profiles",
-    ids=[user_id]
-)
+Each user has a vector profile built from their preferences and behavior.
+We use this profile to find products that are semantically similar to what the user likes, while respecting constraints such as budget or categories.
 
-# Find products similar to user's preferences
-recommendations = qdrant_client.search(
-    collection_name="products",
-    query_vector=user_profile.vector,
-    query_filter=Filter(
-        must=[FieldCondition(key="price", range=Range(lte=user_budget))]
-    ),
-    limit=20
-)
-```
+**Result:** Smart, personalized product suggestions.
 
 #### 3. Finding Alternatives
 
-```python
-# Get the original product's vector
-original_product = qdrant_client.retrieve(
-    collection_name="products",
-    ids=[product_id]
-)
+When a user views a product, the system finds similar items in terms of features and style, but with better conditions (e.g. cheaper price, same category).
 
-# Find similar but cheaper products
-alternatives = qdrant_client.search(
-    collection_name="products",
-    query_vector=original_product.vector,
-    query_filter=Filter(
-        must=[
-            FieldCondition(key="price", range=Range(lt=original_product.price)),
-            FieldCondition(key="category", match=MatchValue(value=original_product.category))
-        ]
-    ),
-    limit=5
-)
-```
+**Result:** Relevant alternatives instead of random substitutions.
 
 #### 4. Learning from Interactions
 
-```python
-# Log user interaction
-interaction_vector = embedding_model.encode(f"user viewed {product_name}")
+Every user action (views, clicks, searches, purchases) is stored as vector data.
+This allows the system to continuously learn user preferences and improve search and recommendations over time.
 
-qdrant_client.upsert(
-    collection_name="user_interactions",
-    points=[PointStruct(
-        id=interaction_id,
-        vector=interaction_vector,
-        payload={
-            "user_id": user_id,
-            "product_id": product_id,
-            "action": "view",
-            "timestamp": datetime.now().isoformat()
-        }
-    )]
-)
-```
+**Result:** The system becomes smarter with usage.
 
 ### Why Qdrant?
 
