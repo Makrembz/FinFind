@@ -19,6 +19,7 @@ from ..dependencies import (
     check_rate_limit,
     UserContext
 )
+from ..services.search_cache import get_search_cache, SearchCacheService
 from ...agents.services.qdrant_service import QdrantService
 from ...agents.services.embedding_service import EmbeddingService
 from ...agents.services.ranking_service import (
@@ -128,6 +129,24 @@ async def search_products(
     start_time = time.time()
     
     try:
+        # Check cache first (for non-personalized searches)
+        cache = await get_search_cache()
+        cache_key_filters = body.filters.dict() if body.filters else None
+        
+        # Only use cache for non-authenticated users (generic searches)
+        if not user:
+            cached_response = await cache.get(
+                query=body.query,
+                filters=cache_key_filters,
+                strategy=body.ranking_strategy
+            )
+            if cached_response:
+                cached_response["search_time_ms"] = (time.time() - start_time) * 1000
+                cached_response["request_id"] = request_id
+                cached_response["cached"] = True
+                logger.debug(f"Returning cached search results for: {body.query[:30]}...")
+                return SearchResponse(**cached_response)
+        
         # Generate query embedding (sync method)
         query_embedding = embedder.embed(body.query)
         
@@ -252,7 +271,7 @@ async def search_products(
         
         search_time = (time.time() - start_time) * 1000
         
-        return SearchResponse(
+        response = SearchResponse(
             success=True,
             query=body.query,
             products=products,
@@ -261,6 +280,17 @@ async def search_products(
             filters_applied=body.filters.dict() if body.filters else {},
             request_id=request_id
         )
+        
+        # Cache the response for non-authenticated searches
+        if not user:
+            await cache.set(
+                query=body.query,
+                filters=cache_key_filters,
+                strategy=body.ranking_strategy,
+                response=response.dict()
+            )
+        
+        return response
         
     except Exception as e:
         logger.error(f"Search error: {e}", exc_info=True)
@@ -478,3 +508,47 @@ def _generate_match_reason(query: str, payload: dict) -> str:
         reasons.append("Semantic similarity match")
     
     return "; ".join(reasons[:2])
+
+
+@router.get("/cache/stats")
+async def get_cache_stats():
+    """
+    Get search cache statistics.
+    
+    Returns information about cache usage, hit rates, and memory consumption.
+    """
+    try:
+        cache = await get_search_cache()
+        stats = await cache.get_stats()
+        return {
+            "success": True,
+            "cache": stats
+        }
+    except Exception as e:
+        logger.error(f"Cache stats error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@router.post("/cache/clear")
+async def clear_cache():
+    """
+    Clear the search cache.
+    
+    Use this to force fresh results after data updates.
+    """
+    try:
+        cache = await get_search_cache()
+        await cache.clear_all()
+        return {
+            "success": True,
+            "message": "Search cache cleared"
+        }
+    except Exception as e:
+        logger.error(f"Cache clear error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }

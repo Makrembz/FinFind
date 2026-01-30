@@ -27,6 +27,7 @@ import { AffordabilityIndicator } from "@/components/product/AffordabilityIndica
 import { AlternativeSuggestion } from "@/components/product/AlternativeSuggestion";
 import { ProductCard } from "@/components/product/ProductCard";
 import { useProduct, useProductReviews, useRelatedProducts } from "@/hooks/useApi";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { cn, formatCurrency, getStarRating } from "@/lib/utils";
 import type { Review, ProductSearchResult } from "@/types";
 
@@ -40,6 +41,9 @@ export default function ProductDetailPage() {
 
   // Demo user budget (in production, this would come from user profile)
   const monthlyBudget = 1000;
+  
+  // Track recently viewed products
+  const { addItem: addToRecentlyViewed } = useRecentlyViewed();
 
   const { data: productData, isLoading, error } = useProduct(productId);
   const { data: reviewsData } = useProductReviews(productId);
@@ -50,6 +54,21 @@ export default function ProductDetailPage() {
   const alternatives = (relatedProducts || []).filter(
     (p: ProductSearchResult) => product && p.price < product.price
   );
+
+  // Add product to recently viewed when loaded
+  React.useEffect(() => {
+    if (product) {
+      addToRecentlyViewed({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        imageUrl: product.imageUrl,
+        category: product.category,
+        brand: product.brand,
+        viewedAt: Date.now(),
+      });
+    }
+  }, [product, addToRecentlyViewed]);
 
   const handleAddToCart = () => {
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");

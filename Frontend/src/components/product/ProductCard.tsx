@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Star, Heart, ShoppingCart, Info, TrendingDown } from "lucide-react";
+import { Star, Heart, ShoppingCart, Info, TrendingDown, Share2, Link2, Twitter, Facebook } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn, formatCurrency, getStarRating, calculateAffordability } from "@/lib/utils";
 import type { ProductSearchResult } from "@/types";
 
@@ -35,12 +41,60 @@ export function ProductCard({
   onShowAlternatives,
   className,
 }: ProductCardProps) {
+  const [shareSuccess, setShareSuccess] = React.useState(false);
   const affordability = calculateAffordability(product.price, monthlyBudget);
   const starRating = getStarRating(product.rating ?? 0);
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
   const discountPercent = hasDiscount
     ? Math.round((1 - product.price / product.originalPrice!) * 100)
     : 0;
+
+  const productUrl = typeof window !== "undefined" 
+    ? `${window.location.origin}/product/${product.id}`
+    : `/product/${product.id}`;
+
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(productUrl);
+      setShareSuccess(true);
+      setTimeout(() => setShareSuccess(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  const handleShareNative = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product.name,
+          text: `Check out ${product.name} - ${formatCurrency(product.price)}`,
+          url: productUrl,
+        });
+      } catch (err) {
+        // User cancelled or error
+      }
+    }
+  };
+
+  const handleShareTwitter = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = encodeURIComponent(`Check out ${product.name} - ${formatCurrency(product.price)}`);
+    const url = encodeURIComponent(productUrl);
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, "_blank");
+  };
+
+  const handleShareFacebook = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = encodeURIComponent(productUrl);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank");
+  };
 
   return (
     <Card
@@ -94,6 +148,45 @@ export function ProductCard({
         >
           <Heart className="h-4 w-4" />
         </Button>
+
+        {/* Share button */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-12 h-8 w-8 bg-white/80 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-black/80"
+              onClick={(e) => e.preventDefault()}
+              aria-label="Share product"
+            >
+              {shareSuccess ? (
+                <span className="text-green-600 text-xs">✓</span>
+              ) : (
+                <Share2 className="h-4 w-4" />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={handleCopyLink}>
+              <Link2 className="mr-2 h-4 w-4" />
+              Copy link
+            </DropdownMenuItem>
+            {typeof navigator !== "undefined" && navigator.share && (
+              <DropdownMenuItem onClick={handleShareNative}>
+                <Share2 className="mr-2 h-4 w-4" />
+                Share...
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={handleShareTwitter}>
+              <Twitter className="mr-2 h-4 w-4" />
+              Share on Twitter
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleShareFacebook}>
+              <Facebook className="mr-2 h-4 w-4" />
+              Share on Facebook
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </Link>
 
       <CardContent className="flex flex-1 flex-col gap-2 p-4">

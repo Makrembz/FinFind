@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, TrendingUp, Clock, Tag, RefreshCw } from "lucide-react";
+import { Sparkles, TrendingUp, Clock, Tag, RefreshCw, Star, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ProductCard } from "@/components/product/ProductCard";
 import { ExplanationTooltip } from "@/components/product/ExplanationTooltip";
 import { useRecommendations, useTrendingProducts, useUserBrowsingHistory, useUser } from "@/hooks/useApi";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import type { ProductSearchResult } from "@/types";
 
 // Demo user ID - in production this would come from auth
@@ -30,17 +31,29 @@ export default function RecommendationsPage() {
     isLoading: isLoadingRecs,
     refetch: refetchRecs,
     isFetching: isFetchingRecs,
+    isError: isRecError,
   } = useRecommendations(userId);
 
-  const { data: trendingProducts, isLoading: isLoadingTrending } =
-    useTrendingProducts();
+  const { 
+    data: trendingData, 
+    isLoading: isLoadingTrending,
+    refetch: refetchTrending,
+    isFetching: isFetchingTrending,
+  } = useTrendingProducts();
 
   const { data: browsingHistory, isLoading: isLoadingHistory } =
     useUserBrowsingHistory(userId);
+    
+  // Get locally stored recently viewed products
+  const { items: localRecentlyViewed } = useRecentlyViewed();
 
   const personalizedRecs = recommendations?.recommendations || [];
-  const trending = trendingProducts || [];
+  const trending = trendingData?.recommendations || [];
   const recentlyViewed = browsingHistory?.interactions || [];
+  
+  // Use trending as fallback for personalized when no recommendations
+  const displayRecs = personalizedRecs.length > 0 ? personalizedRecs : trending;
+  const showingFallback = personalizedRecs.length === 0 && trending.length > 0;
 
   const handleAddToCart = (productId: string) => {
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
@@ -99,23 +112,44 @@ export default function RecommendationsPage() {
         <TabsContent value="personalized" className="space-y-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Products tailored to your interests and budget
+              {showingFallback 
+                ? "Discover popular products while we learn your preferences"
+                : "Products tailored to your interests and budget"}
             </p>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetchRecs()}
-              disabled={isFetchingRecs}
+              onClick={() => {
+                refetchRecs();
+                refetchTrending();
+              }}
+              disabled={isFetchingRecs || isFetchingTrending}
             >
               <RefreshCw
-                className={`mr-2 h-4 w-4 ${isFetchingRecs ? "animate-spin" : ""}`}
+                className={`mr-2 h-4 w-4 ${(isFetchingRecs || isFetchingTrending) ? "animate-spin" : ""}`}
               />
               Refresh
             </Button>
           </div>
 
-          {/* Overall explanation */}
-          {recommendations?.explanation && (
+          {/* Fallback notice when showing trending */}
+          {showingFallback && (
+            <Card className="border-amber-500/20 bg-amber-500/5">
+              <CardContent className="flex items-start gap-3 p-4">
+                <Flame className="mt-0.5 h-5 w-5 text-amber-500" />
+                <div>
+                  <p className="font-medium">Featured Products</p>
+                  <p className="text-sm text-muted-foreground">
+                    Browse our top-rated and trending items. As you explore and interact with products, 
+                    we&apos;ll personalize your recommendations!
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Overall explanation when personalized */}
+          {!showingFallback && recommendations?.explanation && (
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="flex items-start gap-3 p-4">
                 <Sparkles className="mt-0.5 h-5 w-5 text-primary" />
@@ -129,7 +163,7 @@ export default function RecommendationsPage() {
             </Card>
           )}
 
-          {isLoadingRecs ? (
+          {(isLoadingRecs && isLoadingTrending) ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="rounded-lg border p-4">
@@ -140,9 +174,9 @@ export default function RecommendationsPage() {
                 </div>
               ))}
             </div>
-          ) : personalizedRecs.length > 0 ? (
+          ) : displayRecs.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {personalizedRecs.map((product: ProductSearchResult) => (
+              {displayRecs.map((product: ProductSearchResult) => (
                 <div key={product.id} className="relative">
                   <ProductCard
                     product={{
@@ -154,12 +188,21 @@ export default function RecommendationsPage() {
                     onAddToCart={() => handleAddToCart(product.id)}
                     onAddToWishlist={() => handleAddToWishlist(product.id)}
                   />
-                  {product.matchScore !== undefined && (
+                  {product.matchScore !== undefined && !showingFallback && (
                     <Badge
                       className="absolute right-2 top-2 z-10"
                       variant="default"
                     >
                       {Math.round(product.matchScore * 100)}% match
+                    </Badge>
+                  )}
+                  {showingFallback && product.rating && product.rating >= 4.5 && (
+                    <Badge
+                      className="absolute right-2 top-2 z-10 bg-amber-500"
+                      variant="default"
+                    >
+                      <Star className="mr-1 h-3 w-3 fill-current" />
+                      Top Rated
                     </Badge>
                   )}
                 </div>
@@ -239,7 +282,8 @@ export default function RecommendationsPage() {
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {personalizedRecs
+            {/* Use displayRecs which includes trending as fallback */}
+            {displayRecs
               .filter(
                 (p: ProductSearchResult) =>
                   p.originalPrice && p.originalPrice > p.price
@@ -268,7 +312,7 @@ export default function RecommendationsPage() {
               })}
           </div>
 
-          {personalizedRecs.filter(
+          {displayRecs.filter(
             (p: ProductSearchResult) =>
               p.originalPrice && p.originalPrice > p.price
           ).length === 0 && (
@@ -287,7 +331,7 @@ export default function RecommendationsPage() {
         {/* Recently Viewed */}
         <TabsContent value="history" className="space-y-6">
           <p className="text-sm text-muted-foreground">
-            Products you've recently viewed
+            Products you&apos;ve recently viewed
           </p>
 
           {isLoadingHistory ? (
@@ -300,9 +344,9 @@ export default function RecommendationsPage() {
                 </div>
               ))}
             </div>
-          ) : recentlyViewed.length > 0 ? (
+          ) : localRecentlyViewed.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {recentlyViewed.map((product: any) => (
+              {localRecentlyViewed.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
